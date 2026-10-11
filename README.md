@@ -3,10 +3,10 @@
 Native macOS Touch Bar pet source code (Swift + Objective-C bridge).
 
 ## Features
-- White cat with fluffy tail, visible while sleeping
+- Kitty
 - Tap cat to pet; three quick taps toggle shelter
 - Tap blank ground to leave a snack; cat walks to it and eats it
-- Tap a poop to clean it
+- Tap to clean it
 - Drag the pink ball to play
 - Saved PET, FED, PLAY, CLEAN counters
 - Animated clouds, rain, sun, and four time-of-day palettes
