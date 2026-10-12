@@ -1,33 +1,45 @@
 # TouchPET
 
-Native macOS Touch Bar pet source code (Swift + Objective-C bridge).
+Native macOS Touch Bar pet (Swift + a small Objective-C bridge). Menu-bar app, no window.
 
 ## Features
-- Kitty
-- Tap cat to pet; three quick taps toggle shelter
-- Tap blank ground to leave a snack; cat walks to it and eats it
-- Tap to clean it
+- Tap the cat to pet it: it **hops around** (2-3 hops, rapid taps extend the sequence) and hearts float up
+- Three quick taps toggle the shelter
+- Tap empty ground to leave a snack; the cat walks over and eats it
+- Tap poop to clean it
 - Drag the pink ball to play
-- Saved PET, FED, PLAY, CLEAN counters
-- Animated clouds, rain, sun, and four time-of-day palettes
-- Menu-bar app; no separate pet window
+- Saved PET / FED / PLAY / CLEAN counters
+- Animated clouds, rain (falls downwards), sun, four time-of-day palettes, blinking, wandering, napping
 
-## Build on a Mac with a physical Touch Bar
+## Build (Mac with a physical Touch Bar)
 
 ```bash
-git clone https://github.com/jangoeksu/TouchPET.git
-cd TouchPET
-chmod +x build.sh install.sh
+chmod +x build.sh install.sh uninstall.sh
 ./build.sh
 open dist/TouchPET.app
 ```
 
-If it launches and the physical Touch Bar responds, install autostart with `./install.sh`.
+If the pet shows up and responds to touch, run `./install.sh` for autostart
+(launchd restarts it if it ever crashes; **Quit** from the menu really quits). `./uninstall.sh` removes it.
 
-## Important compatibility notes
+## Keeping the pet on the Touch Bar
 
-**Unverified prototype:** the project was uploaded as source code, but has not been compiled or physically tested on a Mac in this environment. The system-modal Touch Bar bridge invokes **private, undocumented macOS APIs** and could fail on your macOS version. If the pet doesn't appear or taps don't respond, this may be the cause; please provide the macOS version and build output.
+| Situation | What TouchPET does |
+|---|---|
+| Sleep / wake, screen unlock, fast user switch | Re-presents the bar 1-4 s after wake (hardware needs a moment) |
+| Another system-modal bar or display change replaces it | Re-presents it (auto-restore, see below) |
+| Dismissed by tapping the "X" | Control Strip cat button or menu-bar **Show cat** brings it back |
+| macOS App Nap throttling a windowless app | Disabled, so animation never stalls |
+| Display turns off after inactivity | Menu **Keep display awake** (off by default; costs battery) |
 
-The app cannot show the cat while the Mac's Touch Bar hardware is powered off (e.g. during display/system sleep). This implementation does not modify the original closed-source Touchbar Pet app.
+Menu-bar options (the cat icon):
+- **Pin to Touch Bar** (default on): hides the "X" button and restores the bar automatically if the system drops it. Turn it off to get the close button back. Use **Hide cat** from the menu to hide it deliberately.
+- **Keep display awake**: prevents display sleep so the Touch Bar stays lit.
 
-To stop automatic login launch, remove `~/Library/LaunchAgents/com.jangoeksu.touchpet.plist` and unload it with `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.jangoeksu.touchpet.plist`.
+## Compatibility notes
+
+The system-modal presentation uses **private, undocumented macOS APIs**
+(`NSTouchBar` system-modal selectors and `DFRFoundation`). They are looked up at runtime, so the app
+still builds if one is missing; the menu-bar icon shows a warning sign if no presentation API exists on your macOS version.
+This code has not been compiled or run on a Mac by the author of this revision. If something fails, send the macOS version and the
+output of `./build.sh` / `log stream --predicate 'process == "TouchPET"'`.
