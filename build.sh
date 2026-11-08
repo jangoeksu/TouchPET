@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")"
-[[ "$(uname -s)" == "Darwin" ]] || { echo "Build on a Touch Bar Mac"; exit 1; }
+[[ "$(uname -s)" == "Darwin" ]] || { echo "Build on macOS (Touch Bar hardware is not required)"; exit 1; }
 APP="dist/TouchPET.app"
 OBJ="$(mktemp -t touchpet_bridge).o"
 trap 'rm -f "$OBJ"' EXIT
