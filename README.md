@@ -11,13 +11,33 @@ Native macOS Touch Bar pet (Swift + a small Objective-C bridge). Menu-bar app, n
 - Saved PET / FED / PLAY / CLEAN counters
 - Animated clouds, rain (falls downwards), sun, four time-of-day palettes, blinking, wandering, napping
 
-## Build (Mac with a physical Touch Bar)
+## Build (macOS)
 
 ```bash
 chmod +x build.sh install.sh uninstall.sh
 ./build.sh
 open dist/TouchPET.app
 ```
+
+### Test without a physical Touch Bar
+
+TouchPET can now display its interactive pet directly in a small floating window.
+On any Mac, build as above, then start the app in preview mode:
+
+```bash
+open dist/TouchPET.app --args --preview
+```
+
+The same drawing, mouse interactions, and saved counters are used for the on-screen
+preview and the physical Touch Bar. Click the cat to pet it, click empty space to
+feed it, and drag the ball to play. You can also select **Open on-screen preview**
+from the menu bar at any time. If another copy of TouchPET is already running,
+quit it first so the new `--preview` argument takes effect.
+
+**Important:** The preview tests the pet itself, but it does **not** simulate
+macOS's private Touch Bar presentation APIs or prove that the app works on
+real Touch Bar hardware. A separate Touch Bar simulator is not required to
+test the pet's UI.
 
 If the pet shows up and responds to touch, run `./install.sh` for autostart
 (launchd restarts it if it ever crashes; **Quit** from the menu really quits). `./uninstall.sh` removes it.
@@ -41,5 +61,7 @@ Menu-bar options (the cat icon):
 The system-modal presentation uses **private, undocumented macOS APIs**
 (`NSTouchBar` system-modal selectors and `DFRFoundation`). They are looked up at runtime, so the app
 still builds if one is missing; the menu-bar icon shows a warning sign if no presentation API exists on your macOS version.
-This code has not been compiled or run on a Mac by the author of this revision. If something fails, send the macOS version and the
+The on-screen preview can be used to test the pet without Touch Bar hardware.
+The hardware integration uses private APIs whose behavior varies by macOS release.
+If something fails, send the macOS version and the
 output of `./build.sh` / `log stream --predicate 'process == "TouchPET"'`.
