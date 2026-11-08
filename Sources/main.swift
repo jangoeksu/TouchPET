@@ -306,7 +306,7 @@ final class PetCanvas: NSView {
 
         // Hearts and zZ are drawn unscaled so they stay crisp.
         for heart in state.hearts {
-            ("♥" as NSString).draw(
+            ("+" as NSString).draw(
                 at: NSPoint(x: cx + heart.x - 4, y: groundY + 14 + heart.age * 8),
                 withAttributes: [.font: NSFont.systemFont(ofSize: 9),
                                  .foregroundColor: NSColor.systemPink.withAlphaComponent(1 - heart.age)])
@@ -398,8 +398,8 @@ final class PetCanvas: NSView {
 // MARK: - App
 
 final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
-    static let canvasID = NSTouchBarItem.Identifier("touchpet.canvas")
-    static let trayID = NSTouchBarItem.Identifier("touchpet.tray")
+    static let canvasID = NSTouchBarItem.Identifier("touchbarpet.canvas")
+    static let trayID = NSTouchBarItem.Identifier("touchbarpet.tray")
 
     private let defaults = UserDefaults.standard
     private var bar: NSTouchBar?
@@ -435,8 +435,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         // Without this macOS "App Nap"s a windowless background app and the animation stalls.
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep],
-            reason: "TouchPET Touch Bar animation")
-        ProcessInfo.processInfo.disableAutomaticTermination("TouchPET")
+            reason: "TouchBarPET Touch Bar animation")
+        ProcessInfo.processInfo.disableAutomaticTermination("TouchBarPET")
         ProcessInfo.processInfo.disableSuddenTermination()
 
         buildMenu()
@@ -461,8 +461,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        if let b = bar { TouchPETDismissBar(b) }
-        if !previewMode { TouchPETRemoveTrayItem(PetApp.trayID.rawValue) }
+        if let b = bar { TouchBarPETDismissBar(b) }
+        if !previewMode { TouchBarPETRemoveTrayItem(PetApp.trayID.rawValue) }
         setKeepAwake(false, save: false)
         if let a = activity { ProcessInfo.processInfo.endActivity(a) }
     }
@@ -471,7 +471,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
     private func buildMenu() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "🐱"
+        item.button?.title = "PET"
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Show cat", action: #selector(show), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Hide cat", action: #selector(hide), keyEquivalent: ""))
@@ -486,7 +486,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         awake.state = keepAwake ? .on : .off
         menu.addItem(awake); awakeItem = awake
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit TouchPET", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit TouchBarPET", action: #selector(quit), keyEquivalent: "q"))
         for m in menu.items { m.target = self }
         item.menu = menu
         statusItem = item
@@ -501,8 +501,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
         // Control Strip button: one tap brings the pet back if it was dismissed.
         let tray = NSCustomTouchBarItem(identifier: PetApp.trayID)
-        tray.view = NSButton(title: "🐱", target: self, action: #selector(show))
-        TouchPETInstallTrayItem(tray, PetApp.trayID.rawValue)
+        tray.view = NSButton(title: "PET", target: self, action: #selector(show))
+        TouchBarPETInstallTrayItem(tray, PetApp.trayID.rawValue)
         trayItem = tray
     }
 
@@ -556,10 +556,10 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
     private func present() {
         guard let b = bar else { return }
-        TouchPETSetCloseBoxVisible(!pinned)
-        let ok = TouchPETPresentBar(b, PetApp.trayID.rawValue)
-        statusItem?.button?.title = ok ? "🐱" : "🐱⚠︎"
-        if !ok { NSLog("TouchPET: no system-modal Touch Bar API available on this macOS version") }
+        TouchBarPETSetCloseBoxVisible(!pinned)
+        let ok = TouchBarPETPresentBar(b, PetApp.trayID.rawValue)
+        statusItem?.button?.title = ok ? "PET" : "PET!"
+        if !ok { NSLog("TouchBarPET: no system-modal Touch Bar API available on this macOS version") }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
             guard let self = self, let b = self.bar else { return }
             if b.isVisible { self.visibilityReliable = true }
@@ -576,7 +576,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     @objc func hide() {
         wantVisible = false
         previewWindow?.orderOut(nil)
-        if let b = bar { TouchPETDismissBar(b) }
+        if let b = bar { TouchBarPETDismissBar(b) }
     }
 
     /// Uses the exact same PetCanvas and PetState as the hardware Touch Bar.
@@ -589,7 +589,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
                 styleMask: [.titled, .closable, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false)
-            panel.title = "TouchPET — On-screen preview"
+            panel.title = "TouchBarPET — On-screen preview"
             panel.contentView = PetCanvas(frame: rect)
             panel.isReleasedWhenClosed = false
             panel.hidesOnDeactivate = false
@@ -620,7 +620,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
             let r = IOPMAssertionCreateWithName(
                 kIOPMAssertionTypeNoDisplaySleep as CFString,
                 IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                "TouchPET keeps the Touch Bar on" as CFString, &id)
+                "TouchBarPET keeps the Touch Bar on" as CFString, &id)
             if r == kIOReturnSuccess { displayAssertion = id }
         } else if !on, displayAssertion != 0 {
             IOPMAssertionRelease(displayAssertion)
