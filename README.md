@@ -39,7 +39,9 @@ macOS's private Touch Bar presentation APIs or prove that the app works on
 real Touch Bar hardware. A separate Touch Bar simulator is not required to
 test the pet's UI.
 
-If the pet shows up and responds to touch, run `./install.sh` for autostart
+For autostart on a Mac with a physical Touch Bar, run `./install.sh`.
+To automatically open the on-screen preview at login on a Mac without
+a Touch Bar, run `./install.sh --preview`.
 (launchd restarts it if it ever crashes; **Quit** from the menu really quits). `./uninstall.sh` removes it.
 
 ## Keeping the pet on the Touch Bar
