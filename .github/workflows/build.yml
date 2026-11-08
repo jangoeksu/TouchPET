@@ -1,0 +1,13 @@
+name: macOS build
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build TouchPET
+        run: bash ./build.sh
