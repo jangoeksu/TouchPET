@@ -461,8 +461,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        if let b = bar { TouchBarPETDismissBar(b) }
-        if !previewMode { TouchBarPETRemoveTrayItem(PetApp.trayID.rawValue) }
+        if let b = bar { TouchPETDismissBar(b) }
+        if !previewMode { TouchPETRemoveTrayItem(PetApp.trayID.rawValue) }
         setKeepAwake(false, save: false)
         if let a = activity { ProcessInfo.processInfo.endActivity(a) }
     }
@@ -502,7 +502,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         // Control Strip button: one tap brings the pet back if it was dismissed.
         let tray = NSCustomTouchBarItem(identifier: PetApp.trayID)
         tray.view = NSButton(title: "PET", target: self, action: #selector(show))
-        TouchBarPETInstallTrayItem(tray, PetApp.trayID.rawValue)
+        TouchPETInstallTrayItem(tray, PetApp.trayID.rawValue)
         trayItem = tray
     }
 
@@ -556,8 +556,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
     private func present() {
         guard let b = bar else { return }
-        TouchBarPETSetCloseBoxVisible(!pinned)
-        let ok = TouchBarPETPresentBar(b, PetApp.trayID.rawValue)
+        TouchPETSetCloseBoxVisible(!pinned)
+        let ok = TouchPETPresentBar(b, PetApp.trayID.rawValue)
         statusItem?.button?.title = ok ? "PET" : "PET!"
         if !ok { NSLog("TouchBarPET: no system-modal Touch Bar API available on this macOS version") }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
@@ -576,7 +576,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     @objc func hide() {
         wantVisible = false
         previewWindow?.orderOut(nil)
-        if let b = bar { TouchBarPETDismissBar(b) }
+        if let b = bar { TouchPETDismissBar(b) }
     }
 
     /// Uses the exact same PetCanvas and PetState as the hardware Touch Bar.
