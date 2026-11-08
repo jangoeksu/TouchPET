@@ -1,6 +1,8 @@
 name: macOS build
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -9,13 +11,13 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
-      - name: Build TouchPET
+      - name: Build TouchBarPET
         run: bash ./build.sh
-      - name: Package TouchPET.app
-        run: ditto -c -k --sequesterRsrc --keepParent dist/TouchPET.app TouchPET-macOS.zip
+      - name: Package TouchBarPET.app
+        run: ditto -c -k --sequesterRsrc --keepParent dist/TouchBarPET.app TouchBarPET-macOS.zip
       - name: Upload downloadable app
         uses: actions/upload-artifact@v6
         with:
-          name: TouchPET-macOS
-          path: TouchPET-macOS.zip
+          name: TouchBarPET-macOS
+          path: TouchBarPET-macOS.zip
           retention-days: 14
