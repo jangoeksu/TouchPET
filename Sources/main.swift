@@ -405,6 +405,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     private var bar: NSTouchBar?
     private var trayItem: NSCustomTouchBarItem?
     private var statusItem: NSStatusItem?
+    private var previewWindow: NSPanel?
+    private let previewMode = ProcessInfo.processInfo.arguments.contains("--preview")
     private var pinItem: NSMenuItem?
     private var awakeItem: NSMenuItem?
     private var frameTimer: Timer?
@@ -438,7 +440,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         ProcessInfo.processInfo.disableSuddenTermination()
 
         buildMenu()
-        buildBar()
+        if !previewMode { buildBar() }
         observeSystemEvents()
 
         // .common so the pet keeps animating while the menu-bar menu is open.
@@ -455,12 +457,12 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         watchdog = w
 
         if keepAwake { setKeepAwake(true) }
-        show()
+        if previewMode { showPreview() } else { show() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         if let b = bar { TouchPETDismissBar(b) }
-        TouchPETRemoveTrayItem(PetApp.trayID.rawValue)
+        if !previewMode { TouchPETRemoveTrayItem(PetApp.trayID.rawValue) }
         setKeepAwake(false, save: false)
         if let a = activity { ProcessInfo.processInfo.endActivity(a) }
     }
@@ -473,6 +475,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Show cat", action: #selector(show), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Hide cat", action: #selector(hide), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Open on-screen preview", action: #selector(showPreview), keyEquivalent: ""))
         menu.addItem(.separator())
         let pin = NSMenuItem(title: "Pin to Touch Bar (no close button, auto-restore)",
                              action: #selector(togglePin(_:)), keyEquivalent: "")
@@ -566,8 +569,38 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
     // MARK: Actions
 
-    @objc func show() { wantVisible = true; present() }
-    @objc func hide() { wantVisible = false; if let b = bar { TouchPETDismissBar(b) } }
+    @objc func show() {
+        wantVisible = true
+        if previewMode { showPreview() } else { present() }
+    }
+    @objc func hide() {
+        wantVisible = false
+        previewWindow?.orderOut(nil)
+        if let b = bar { TouchPETDismissBar(b) }
+    }
+
+    /// Uses the exact same PetCanvas and PetState as the hardware Touch Bar.
+    /// This is an interactive preview, not an emulation of macOS's private Touch Bar APIs.
+    @objc func showPreview() {
+        if previewWindow == nil {
+            let rect = NSRect(origin: .zero, size: PetCanvas.size)
+            let panel = NSPanel(
+                contentRect: rect,
+                styleMask: [.titled, .closable, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false)
+            panel.title = "TouchPET — On-screen preview"
+            panel.contentView = PetCanvas(frame: rect)
+            panel.isReleasedWhenClosed = false
+            panel.hidesOnDeactivate = false
+            panel.level = .floating
+            panel.collectionBehavior = [.canJoinAllSpaces]
+            panel.center()
+            previewWindow = panel
+        }
+        previewWindow?.orderFrontRegardless()
+    }
+
     @objc func quit() { NSApp.terminate(nil) }
 
     @objc func togglePin(_ sender: NSMenuItem) {
