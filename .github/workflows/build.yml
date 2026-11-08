@@ -11,3 +11,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build TouchPET
         run: bash ./build.sh
+      - name: Package TouchPET.app
+        run: ditto -c -k --sequesterRsrc --keepParent dist/TouchPET.app TouchPET-macOS.zip
+      - name: Upload downloadable app
+        uses: actions/upload-artifact@v4
+        with:
+          name: TouchPET-macOS
+          path: TouchPET-macOS.zip
+          retention-days: 14
