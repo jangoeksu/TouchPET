@@ -1,4 +1,4 @@
-# TouchPET
+# TouchBarPet
 
 Native macOS Touch Bar pet (Swift + a small Objective-C bridge). Menu-bar app, no window.
 
