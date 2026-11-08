@@ -2,6 +2,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 test -d dist/TouchPET.app || { echo "Run ./build.sh first"; exit 1; }
+# Use --preview to keep the interactive on-screen pet running at login.
+PREVIEW_XML=""
+if [[ "${1:-}" == "--preview" && $# -eq 1 ]]; then
+  PREVIEW_XML="<string>--preview</string>"
+elif [[ $# -ne 0 ]]; then
+  echo "Usage: ./install.sh [--preview]" >&2
+  exit 2
+fi
 LABEL="com.jangoeksu.touchpet"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents"
@@ -17,7 +25,7 @@ cat > "$PLIST" <<PLISTEOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>$LABEL</string>
-<key>ProgramArguments</key><array><string>$HOME/Applications/TouchPET.app/Contents/MacOS/TouchPET</string></array>
+<key>ProgramArguments</key><array><string>$HOME/Applications/TouchPET.app/Contents/MacOS/TouchPET</string>${PREVIEW_XML}</array>
 <key>RunAtLoad</key><true/>
 <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
 <key>ThrottleInterval</key><integer>5</integer>
