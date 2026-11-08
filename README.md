@@ -1,37 +1,36 @@
-# TouchBarPet
+# TouchBarPET
 
 Native macOS Touch Bar pet (Swift + a small Objective-C bridge). Menu-bar app, no window.
 
 ## Features
-- Tap the cat to pet it: it **hops around** (2-3 hops, rapid taps extend the sequence) and hearts float up
-- Three quick taps toggle the shelter
+- Pet the cat in the on-screen preview or Touch Bar
 - Tap empty ground to leave a snack; the cat walks over and eats it
 - Tap poop to clean it
 - Drag the pink ball to play
 - Saved PET / FED / PLAY / CLEAN counters
-- Animated clouds, rain (falls downwards), sun, four time-of-day palettes, blinking, wandering, napping
+- Animated clouds and a day/night sky in the native app
 
 ## Build (macOS)
 
 ```bash
 chmod +x build.sh install.sh uninstall.sh
 ./build.sh
-open dist/TouchPET.app
+open dist/TouchBarPET.app
 ```
 
 ### Test without a physical Touch Bar
 
-TouchPET can now display its interactive pet directly in a small floating window.
+TouchBarPET can now display its interactive pet directly in a small floating window.
 On any Mac, build as above, then start the app in preview mode:
 
 ```bash
-open dist/TouchPET.app --args --preview
+open dist/TouchBarPET.app --args --preview
 ```
 
 The same drawing, mouse interactions, and saved counters are used for the on-screen
 preview and the physical Touch Bar. Click the cat to pet it, click empty space to
 feed it, and drag the ball to play. You can also select **Open on-screen preview**
-from the menu bar at any time. If another copy of TouchPET is already running,
+from the menu bar at any time. If another copy of TouchBarPET is already running,
 quit it first so the new `--preview` argument takes effect.
 
 **Important:** The preview tests the pet itself, but it does **not** simulate
@@ -46,7 +45,7 @@ a Touch Bar, run `./install.sh --preview`.
 
 ## Keeping the pet on the Touch Bar
 
-| Situation | What TouchPET does |
+| Situation | What TouchBarPET does |
 |---|---|
 | Sleep / wake, screen unlock, fast user switch | Re-presents the bar 1-4 s after wake (hardware needs a moment) |
 | Another system-modal bar or display change replaces it | Re-presents it (auto-restore, see below) |
@@ -66,4 +65,4 @@ still builds if one is missing; the menu-bar icon shows a warning sign if no pre
 The on-screen preview can be used to test the pet without Touch Bar hardware.
 The hardware integration uses private APIs whose behavior varies by macOS release.
 If something fails, send the macOS version and the
-output of `./build.sh` / `log stream --predicate 'process == "TouchPET"'`.
+output of `./build.sh` / `log stream --predicate 'process == "TouchBarPET"'`.
