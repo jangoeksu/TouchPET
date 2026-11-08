@@ -462,7 +462,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         if let b = bar { TouchPETDismissBar(b) }
-        TouchPETRemoveTrayItem(PetApp.trayID.rawValue)
+        if !previewMode { TouchPETRemoveTrayItem(PetApp.trayID.rawValue) }
         setKeepAwake(false, save: false)
         if let a = activity { ProcessInfo.processInfo.endActivity(a) }
     }
@@ -575,8 +575,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     }
     @objc func hide() {
         wantVisible = false
-        if previewMode { previewWindow?.orderOut(nil) }
-        else if let b = bar { TouchPETDismissBar(b) }
+        previewWindow?.orderOut(nil)
+        if let b = bar { TouchPETDismissBar(b) }
     }
 
     /// Uses the exact same PetCanvas and PetState as the hardware Touch Bar.
