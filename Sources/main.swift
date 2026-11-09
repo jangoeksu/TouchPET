@@ -20,10 +20,8 @@ final class PetState {
     var snack: CGFloat?
     var poop: [CGFloat] = []
     var sleeping = false
-    var shelter = false
     var direction: CGFloat = 1
     var tick: CGFloat = 0
-    var weather = 0
 
     // Counters (persisted)
     var pets = UserDefaults.standard.integer(forKey: "pets")
@@ -34,11 +32,13 @@ final class PetState {
     // Timing
     var lastTap: [Date] = []
     var lastPoop = Date()
-    var lastWeather = Date()
     var lastUpdate = Date()
     var recentActivity = Date()
     var nextWander = Date().addingTimeInterval(3)
     var walkTarget: CGFloat?
+    var lounging = false
+    var loungeUntil = Date.distantPast
+    var nextLounge = Date().addingTimeInterval(12)
 
     // Kept at rest: Blob Kitty does not hop when petted.
     let jump: CGFloat = 0
@@ -56,8 +56,7 @@ final class PetState {
         let now = Date()
         lastTap = lastTap.filter { now.timeIntervalSince($0) < 1.3 }
         lastTap.append(now)
-        if lastTap.count >= 3 { shelter.toggle(); lastTap.removeAll() }
-        sleeping = false; recentActivity = now
+        sleeping = false; lounging = false; recentActivity = now
         walkTarget = nil
         company = min(10, company + 2)
         // Blob Kitty stays on the ground when petted (no hopping).
@@ -65,7 +64,7 @@ final class PetState {
         if hearts.count > 5 { hearts.removeFirst() }
     }
 
-    func addSnack(_ p: CGFloat) { snack = p; sleeping = false; recentActivity = Date() }
+    func addSnack(_ p: CGFloat) { snack = p; lounging = false; sleeping = false; recentActivity = Date() }
 
     func clean(_ index: Int) {
         guard poop.indices.contains(index) else { return }
@@ -77,6 +76,7 @@ final class PetState {
     func startBallDrag(at p: CGFloat) {
         ballDragging = true
         ballVelocity = 0
+        lounging = false
         chasingBall = false
         moveBall(to: p)
         games += 1
@@ -92,7 +92,7 @@ final class PetState {
     func finishBallDrag(velocity: CGFloat) {
         guard ballDragging else { return }
         ballDragging = false
-        ballVelocity = max(-1.2, min(1.2, velocity))
+        ballVelocity = max(-0.20, min(0.20, velocity))
         chasingBall = true
         sleeping = false
         recentActivity = Date()
@@ -108,7 +108,6 @@ final class PetState {
         lastUpdate = now
         tick += dt * 1.6
 
-        if now.timeIntervalSince(lastWeather) > 65 { weather = (weather + 1) % 3; lastWeather = now }
         if now.timeIntervalSince(lastPoop) > 1100 {
             if poop.count < 3 { poop.append(CGFloat.random(in: 0.7...0.93)) }
             lastPoop = now
@@ -128,9 +127,13 @@ final class PetState {
             if abs(ballVelocity) < 0.003 { ballVelocity = 0 }
         }
 
+        if lounging && now >= loungeUntil {
+            lounging = false
+            nextLounge = now.addingTimeInterval(Double.random(in: 14...24))
+        }
         if let food = snack {
             direction = food > x ? 1 : -1
-            x += max(-0.12 * dt, min(0.12 * dt, food - x))
+            x += max(-0.040 * dt, min(0.040 * dt, food - x))
             if abs(food - x) < 0.022 {
                 snack = nil; feeds += 1
                 hunger = min(10, hunger + 4)
@@ -140,19 +143,25 @@ final class PetState {
         } else if chasingBall {
             direction = ball >= x ? 1 : -1
             let delta = ball - x
-            x += max(-0.16 * dt, min(0.16 * dt, delta))
+            x += max(-0.055 * dt, min(0.055 * dt, delta))
             if abs(delta) < 0.02 && !ballDragging {
                 if abs(ballVelocity) < 0.03 {
-                    ballVelocity += direction * 0.2
+                    ballVelocity += direction * 0.075
                     chasingBall = false
                 }
             }
-        } else if now.timeIntervalSince(recentActivity) > 25 {
+        } else if lounging {
+            walkTarget = nil
+        } else if now >= nextLounge && !ballDragging {
+            lounging = true
+            loungeUntil = now.addingTimeInterval(Double.random(in: 3...6))
+            walkTarget = nil
+        } else if now.timeIntervalSince(recentActivity) > 40 {
             sleeping = true; walkTarget = nil
         } else if !sleeping {
             if let target = walkTarget {
                 direction = target > x ? 1 : -1
-                x += direction * 0.035 * dt
+                x += direction * 0.025 * dt
                 if abs(target - x) < 0.004 {
                     walkTarget = nil
                     nextWander = now.addingTimeInterval(Double.random(in: 2...6))
@@ -205,111 +214,80 @@ final class PetCanvas: NSView {
         c.setFill(); NSRect(x: x, y: y, width: w, height: h).fill()
     }
 
-    /// Rounded Blob Kitty silhouette, matching the updated browser preview.
-    /// Feet are at y=0; draw(_:) scales these coordinates for the Touch Bar.
+    /// Soft toy-like Blob Kitty, all circles, tiny paws, bright eyes and pink cheeks.
     private func drawCat(t: CGFloat, blink: Bool) {
-        let fur = NSColor(red: 1, green: 0.973, blue: 0.949, alpha: 1)
-        let shade = NSColor(red: 0.91, green: 0.867, blue: 0.843, alpha: 1)
-        let pink = NSColor(red: 0.91, green: 0.67, blue: 0.71, alpha: 1)
-        let ink = NSColor(red: 0.16, green: 0.20, blue: 0.24, alpha: 1)
+        let fur = NSColor(red: 1, green: 0.976, blue: 0.951, alpha: 1)
+        let pink = NSColor(red: 1, green: 0.72, blue: 0.79, alpha: 1)
+        let ink = NSColor(red: 0.18, green: 0.23, blue: 0.33, alpha: 1)
+        let bob = sin(t * 1.3) * 0.6
         let sad = state.hunger <= 3 || state.company <= 3
-        let breath = sin(t * 1.3) * 0.6
-        // Tail, four little feet and a round body.
-        let tail = NSBezierPath()
-        tail.lineWidth = 6
-        tail.lineCapStyle = .round
-        tail.move(to: NSPoint(x: 19, y: 12))
-        tail.curve(to: NSPoint(x: 32, y: 12),
-                   controlPoint1: NSPoint(x: 30, y: 22),
-                   controlPoint2: NSPoint(x: 36, y: 5))
-        fur.setStroke(); tail.stroke()
-        oval(-24, 0, 17, 11, shade)
-        oval(7, 0, 17, 11, shade)
-        oval(-24, 0, 17, 7, fur)
-        oval(7, 0, 17, 7, fur)
-        oval(-29, 5 + breath, 58, 48, shade)
-        oval(-29, 7 + breath, 58, 48, fur)
-
-        // Triangular ears with soft pink interiors.
+        oval(-24, 1, 16, 10, fur)
+        oval(8, 1, 16, 10, fur)
+        oval(-28, 7 + bob, 56, 50, fur)
         for side in [-1.0 as CGFloat, 1.0] {
             let ear = NSBezierPath()
-            ear.move(to: NSPoint(x: side * 12, y: 46 + breath))
-            ear.line(to: NSPoint(x: side * 24, y: 65 + breath))
-            ear.line(to: NSPoint(x: side * 27, y: 37 + breath))
-            ear.close()
-            fur.setFill(); ear.fill()
-            let inner = NSBezierPath()
-            inner.move(to: NSPoint(x: side * 17, y: 47 + breath))
-            inner.line(to: NSPoint(x: side * 23, y: 58 + breath))
-            inner.line(to: NSPoint(x: side * 23, y: 43 + breath))
-            inner.close()
-            pink.setFill(); inner.fill()
+            ear.move(to: NSPoint(x: side * 12, y: 48 + bob))
+            ear.line(to: NSPoint(x: side * 21, y: 62 + bob))
+            ear.line(to: NSPoint(x: side * 25, y: 43 + bob))
+            ear.close(); fur.setFill(); ear.fill()
+            oval(side * 18 - 3, 47 + bob, 6, 8, pink)
         }
-        let eyeHeight: CGFloat = blink ? 1.5 : 13
-        oval(-16, 29 + breath, 10, eyeHeight, ink)
-        oval(6, 29 + breath, 10, eyeHeight, ink)
+        oval(-24, 23 + bob, 12, 7, pink.withAlphaComponent(0.75))
+        oval(12, 23 + bob, 12, 7, pink.withAlphaComponent(0.75))
+        oval(-16, 30 + bob, 12, blink ? 2 : 14, ink)
+        oval(4, 30 + bob, 12, blink ? 2 : 14, ink)
         if !blink {
-            oval(-13, 37 + breath, 3, 4, .white)
-            oval(9, 37 + breath, 3, 4, .white)
+            oval(-13, 38 + bob, 4, 5, .white)
+            oval(7, 38 + bob, 4, 5, .white)
         }
-        oval(-3, 24 + breath, 6, 4, pink)
-        oval(-23, 21 + breath, 9, 4, pink.withAlphaComponent(0.65))
-        oval(14, 21 + breath, 9, 4, pink.withAlphaComponent(0.65))
-
+        oval(-3, 26 + bob, 6, 4, pink)
         let mouth = NSBezierPath()
-        mouth.lineWidth = 1.5
+        mouth.lineWidth = 1.6
         mouth.lineCapStyle = .round
-        mouth.move(to: NSPoint(x: -5, y: sad ? 16 : 18))
-        mouth.line(to: NSPoint(x: 0, y: sad ? 19 : 16))
-        mouth.line(to: NSPoint(x: 5, y: sad ? 16 : 18))
-        NSColor(red: 0.59, green: 0.43, blue: 0.47, alpha: 1).setStroke()
-        mouth.stroke()
+        mouth.move(to: NSPoint(x: -4, y: sad ? 19 : 22))
+        mouth.line(to: NSPoint(x: 0, y: sad ? 22 : 19))
+        mouth.line(to: NSPoint(x: 4, y: sad ? 19 : 22))
+        ink.setStroke(); mouth.stroke()
+    }
+
+    /// Occasionally flops onto a chubby belly-up silhouette.
+    private func drawLoungingKitty(t: CGFloat) {
+        let fur = NSColor(red: 1, green: 0.976, blue: 0.951, alpha: 1)
+        let pink = NSColor(red: 1, green: 0.72, blue: 0.79, alpha: 1)
+        let ink = NSColor(red: 0.18, green: 0.23, blue: 0.33, alpha: 1)
+        let wiggle = sin(t * 2) * 1.1
+        oval(-31, 4, 62, 40, fur)
+        oval(-17, 9, 34, 24, NSColor(red: 1, green: 0.91, blue: 0.92, alpha: 1))
+        oval(-25, 31 + wiggle, 14, 17, fur)
+        oval(11, 31 - wiggle, 14, 17, fur)
+        oval(-19, 39 + wiggle, 5, 5, pink)
+        oval(15, 39 - wiggle, 5, 5, pink)
+        oval(-25, 4, 15, 12, fur)
+        oval(10, 4, 15, 12, fur)
+        oval(-17, 20, 6, 3, ink)
+        oval(11, 20, 6, 3, ink)
+        oval(-3, 16, 6, 4, pink)
+        oval(-26, 13, 9, 5, pink.withAlphaComponent(0.7))
+        oval(17, 13, 9, 5, pink.withAlphaComponent(0.7))
     }
 
     override func draw(_ dirtyRect: NSRect) {
         let w = bounds.width, h = bounds.height
         guard w > 0 && h > 0 else { return }
         let now = Date()
-        let hr = Calendar.current.component(.hour, from: now)
-        let morning = (6..<11).contains(hr), day = (11..<17).contains(hr)
-        let sunset = (17..<21).contains(hr), night = !morning && !day && !sunset
-        let top: NSColor = night ? NSColor(red: 0.03, green: 0.06, blue: 0.16, alpha: 1) :
-            sunset ? NSColor(red: 0.45, green: 0.22, blue: 0.55, alpha: 1) :
-            morning ? NSColor(red: 0.59, green: 0.79, blue: 0.95, alpha: 1) :
-            NSColor(red: 0.3, green: 0.65, blue: 0.98, alpha: 1)
-        let bottom: NSColor = night ? NSColor(red: 0.12, green: 0.16, blue: 0.33, alpha: 1) :
-            sunset ? NSColor(red: 1, green: 0.55, blue: 0.32, alpha: 1) :
-            morning ? NSColor(red: 0.97, green: 0.84, blue: 0.65, alpha: 1) :
-            NSColor(red: 0.63, green: 0.87, blue: 1, alpha: 1)
+        let top = NSColor(red: 0.42, green: 0.73, blue: 0.96, alpha: 1)
+        let bottom = NSColor(red: 0.84, green: 0.94, blue: 1, alpha: 1)
         NSGradient(starting: top, ending: bottom)?.draw(in: bounds, angle: -90)
         let t = state.tick
-        let textColor: NSColor = night ? .white : .black
+        let textColor = NSColor(red: 0.16, green: 0.29, blue: 0.40, alpha: 1)
         let groundY = h * 0.18
 
-        if night {
-            for i in 0..<12 {
-                let px = CGFloat((i * 71 + 17) % 100) / 100 * w
-                let py = h * (0.46 + CGFloat((i * 23) % 40) / 100)
-                oval(px, py, 1.5, 1.5, .white)
-            }
-        }
-        if state.weather != 2 {
-            oval(w * 0.14, h * 0.52, h * 0.3, h * 0.3, night ? .white : .systemYellow)
-        }
-        if state.weather > 0 {
-            let cloudY = h * 0.5
-            let phase = CGFloat(Int(t * 15) % 9)
-            for i in 0..<4 {
-                let xx = (CGFloat(i) * 0.23 + 0.11) * w + sin(t * 0.2 + CGFloat(i)) * 6
-                oval(xx, cloudY, h * 0.55, h * 0.14, .white)
-                oval(xx + h * 0.1, cloudY + h * 0.04, h * 0.3, h * 0.16, .white)
-                if state.weather == 2 {
-                    for n in 0..<3 {   // rain falls downwards into the ground
-                        rectangle(xx + CGFloat(n) * h * 0.18 + 2, cloudY - 2 - phase - CGFloat(n) * 2,
-                                  1.4, h * 0.12, .systemBlue)
-                    }
-                }
-            }
+        // Permanent clear-blue sky: sun and fluffy clouds, never rain.
+        oval(w * 0.14, h * 0.52, h * 0.3, h * 0.3, NSColor(red: 1, green: 0.93, blue: 0.68, alpha: 1))
+        for i in 0..<4 {
+            let xx = (CGFloat(i) * 0.23 + 0.11) * w + sin(t * 0.11 + CGFloat(i)) * 5
+            oval(xx, h * 0.54, h * 0.55, h * 0.14, .white)
+            oval(xx + h * 0.1, h * 0.58, h * 0.3, h * 0.16, .white)
         }
         rectangle(0, 0, w, groundY, NSColor(red: 0.28, green: 0.6, blue: 0.36, alpha: 1))
         (PetCanvas.clock.string(from: now) as NSString).draw(
@@ -334,17 +312,6 @@ final class PetCanvas: NSView {
         // Cat
         let cx = state.x * w
         let hopPx = state.jump * 5
-        let wood = NSColor(red: 0.45, green: 0.25, blue: 0.12, alpha: 1)
-        if state.shelter {
-            let eaves = groundY + 14
-            rectangle(cx - 22, groundY, 3, 14, wood)
-            rectangle(cx + 19, groundY, 3, 14, wood)
-            let roof = NSBezierPath()
-            roof.move(to: NSPoint(x: cx - 26, y: eaves))
-            roof.line(to: NSPoint(x: cx, y: min(h - 1, eaves + 10)))
-            roof.line(to: NSPoint(x: cx + 26, y: eaves))
-            roof.close(); wood.setFill(); roof.fill()
-        }
         let shadowW = 18 * (1 - 0.35 * state.jump)
         oval(cx - shadowW / 2, groundY - 1.5, shadowW, 3, NSColor(white: 0, alpha: 0.2))
 
@@ -357,7 +324,8 @@ final class PetCanvas: NSView {
         xf.translateX(by: cx, yBy: groundY + 0.6 + hopPx)
         xf.scaleX(by: sx, yBy: sy)
         xf.concat()
-        drawCat(t: t, blink: Int(t * 3) % 37 == 0)
+        if state.lounging { drawLoungingKitty(t: t) }
+        else { drawCat(t: t, blink: Int(t * 3) % 37 == 0) }
         NSGraphicsContext.restoreGraphicsState()
 
         // Hearts and zZ are drawn unscaled so they stay crisp.
@@ -416,7 +384,7 @@ final class PetCanvas: NSView {
         guard draggingBall else { return }
         let now = ProcessInfo.processInfo.systemUptime
         let elapsed = max(0.016, now - lastBallTime)
-        releaseVelocity = max(-1.2, min(1.2,
+        releaseVelocity = max(-0.20, min(0.20,
             (fraction - lastBallPosition) / CGFloat(elapsed)))
         lastBallPosition = fraction
         lastBallTime = now
