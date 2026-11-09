@@ -10,6 +10,12 @@ Native macOS Touch Bar pet (Swift + a small Objective-C bridge). Menu-bar app, n
 - Saved PET / FED / PLAY / CLEAN counters
 - Animated clouds and a day/night sky in the native app
 
+## Visual update
+
+- Vivid blue sky with subtle clouds, a very thin ground strip and no ZZZ text
+- Cocoa-brown cartoon kitty with cream-white spots, floppy ears, curled wagging tail, oversized sapphire-blue eyes and pink nose
+- Expanded native Touch Bar canvas width target (1085 points) with low horizontal compression resistance, so the view can use more of the available bar width; actual usable width is controlled by macOS and the Control Strip
+
 ## Current Blob Kitty behavior
 
 - Minimal pastel-blue sky with faint small clouds and a thin ground strip; no rain, night mode, house or sleep ZZZ
