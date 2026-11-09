@@ -5,38 +5,50 @@ if(S.lounge&&t>S.loungeUntil){S.lounge=false;S.nextLounge=t+14000+Math.random()*
 if(S.food!==null){oval(S.food,193,7,4,'#e8a057');oval(S.food-4,191,3,3,'#f8ca8d')}
 oval(S.ball,193,12,12,'#e78db7');
 const walking=Math.abs(d)>6&&!S.lounge,step=walking?Math.sin(S.steps)*2:0,breath=Math.sin(t*.002)*.7;g.save();g.translate(S.x,190+breath);g.scale(S.dir*1.17,1.17);
-const cocoa='#c49775',cream='#fff7e8',pink='#ff9ab5',blue='#2389f4',deep='#12509d';
-oval(0,5,36,5,'#416a4b30');
+const cocoa='#cda786',cream='#fff7e8',pink='#ffabb8',blue='#2b94f9',deep='#12478d',ink='#62454c';
+oval(0,5,34,5,'#315b6630');
 if(S.lounge){
-  oval(0,-17,39,27,cocoa);oval(0,-14,27,18,cream);
-  oval(-23,-42+Math.sin(t*.003)*1.5,10,10,cocoa);oval(23,-42-Math.sin(t*.003)*1.5,10,10,cocoa);
-  oval(-23,-44,5,3,pink);oval(23,-44,5,3,pink);
-  oval(-14,-27,7,6,blue);oval(14,-27,7,6,blue);
-  oval(-16,-29,2.5,2.5,'white');oval(12,-29,2.5,2.5,'white');
-  oval(0,-20,4,3,pink);
-}else{
-  // Curled tail, soft cocoa body with cream spots, and floppy puppy-like kitty ears.
-  line(cocoa,10,[[21,-21],[38,-31],[35,-44]]);
-  oval(-18,0+step,10,7,cocoa);oval(18,0-step,10,7,cocoa);
-  oval(0,-28,35,32,cocoa);
-  oval(-14,-14,15,10,cream);oval(23,-42,9,7,cream);oval(-25,-41,8,7,cream);
+  line(cocoa,8,[[23,-12],[39,-20],[34,-35]]);
+  oval(0,-18,37,25,cocoa);oval(0,-17,26,18,cream);
+  // Pointed ears even when she rolls belly-up.
   g.fillStyle=cocoa;
-  g.beginPath();g.moveTo(-16,-49);g.bezierCurveTo(-22,-76,-44,-70,-38,-49);g.quadraticCurveTo(-31,-42,-16,-49);g.fill();
-  g.beginPath();g.moveTo(16,-49);g.bezierCurveTo(22,-76,44,-70,38,-49);g.quadraticCurveTo(31,-42,16,-49);g.fill();
-  oval(-30,-54,6,5,pink);oval(30,-54,6,5,pink);
-  oval(-13,-37,13,13,cream);oval(13,-37,13,13,cream);
+  g.beginPath();g.moveTo(-25,-34);g.lineTo(-22,-56);g.lineTo(-10,-39);g.closePath();g.fill();
+  g.beginPath();g.moveTo(25,-34);g.lineTo(22,-56);g.lineTo(10,-39);g.closePath();g.fill();
+  oval(-23,-39,5,5,pink);oval(23,-39,5,5,pink);
+  oval(-23,-37+Math.sin(t*.003)*1.5,10,9,cocoa);
+  oval(23,-37-Math.sin(t*.003)*1.5,10,9,cocoa);
+  oval(-15,-27,7,6,blue);oval(15,-27,7,6,blue);
+  oval(-17,-29,2.6,2.7,'white');oval(13,-29,2.6,2.7,'white');
+  oval(-9,-15,11,6,cream);oval(9,-15,11,6,cream);
+  g.fillStyle=pink;g.beginPath();g.moveTo(-4,-20);g.lineTo(4,-20);g.lineTo(0,-16);g.closePath();g.fill();
+  line(ink,1,[[-12,-19],[-26,-24]]);line(ink,1,[[12,-19],[26,-24]]);
+}else{
+  // Distinct cat silhouette: high triangular ears, tiny paws, fluffy tail.
+  line(cocoa,9,[[23,-17],[39,-19],[42,-32],[36,-42]]);
+  oval(-20,-2+step,10,7,cocoa);oval(20,-2-step,10,7,cocoa);
+  oval(0,-28,35,30,cocoa);
+  g.fillStyle=cocoa;
+  g.beginPath();g.moveTo(-26,-47);g.lineTo(-22,-72);g.lineTo(-14,-66);g.lineTo(-9,-45);g.closePath();g.fill();
+  g.beginPath();g.moveTo(26,-47);g.lineTo(22,-72);g.lineTo(14,-66);g.lineTo(9,-45);g.closePath();g.fill();
+  g.fillStyle=pink;
+  g.beginPath();g.moveTo(-24,-50);g.lineTo(-21,-64);g.lineTo(-15,-51);g.closePath();g.fill();
+  g.beginPath();g.moveTo(24,-50);g.lineTo(21,-64);g.lineTo(15,-51);g.closePath();g.fill();
+  // Small coat spots, no pale eye mask.
+  oval(-12,-11,14,8,cream);oval(23,-47,6,4,cream);
   const blink=Math.sin(t*.0008)>.998||S.pet>0;
-  if(blink){oval(-13,-37,9,2,deep);oval(13,-37,9,2,deep)}
+  if(blink){oval(-12,-36,9,2,deep);oval(12,-36,9,2,deep)}
   else{
-    oval(-13,-37,10,11,blue);oval(13,-37,10,11,blue);
-    oval(-13,-36,5,7,deep);oval(13,-36,5,7,deep);
-    oval(-16,-42,3.5,4,'white');oval(10,-42,3.5,4,'white');
+    oval(-12,-37,9,11,blue);oval(12,-37,9,11,blue);
+    oval(-12,-36,5,7,deep);oval(12,-36,5,7,deep);
+    oval(-15,-41,3,4,'white');oval(9,-41,3,4,'white');
   }
-  oval(0,-25,4,3,pink);
+  oval(-8,-24,10,6,cream);oval(8,-24,10,6,cream);
+  g.fillStyle=pink;g.beginPath();g.moveTo(-5,-27);g.lineTo(5,-27);g.lineTo(0,-22);g.closePath();g.fill();
   const sad=S.hunger<=3||S.company<=3;
-  if(sad){line('#805b63',1.8,[[-5,-17],[0,-20],[5,-17]])}
-  else{line('#805b63',1.8,[[-5,-18],[0,-16],[5,-18]])}
-  oval(-25,-26,7,4,'#ffadc1');oval(25,-26,7,4,'#ffadc1');
+  if(sad){line(ink,1.6,[[-5,-18],[0,-21],[5,-18]])}
+  else{line(ink,1.6,[[-6,-19],[-3,-22],[0,-19],[3,-22],[6,-19]])}
+  line(ink,1,[[-16,-24],[-29,-27]]);line(ink,1,[[-16,-21],[-29,-20]]);line(ink,1,[[16,-24],[29,-27]]);line(ink,1,[[16,-21],[29,-20]]);
+  oval(-24,-25,6,3,'#ffc2cc');oval(24,-25,6,3,'#ffc2cc');
 }
 g.restore();if(S.pet>0){g.font='18px system-ui';g.fillText('+',S.x-7,90-S.pet*10);S.pet=Math.max(0,S.pet-dt*1.5)}requestAnimationFrame(draw)}
 requestAnimationFrame(draw);const pos=e=>(e.clientX-c.getBoundingClientRect().left)/c.getBoundingClientRect().width*900;let lastX=0,lastT=0;c.addEventListener('pointerdown',e=>{let x=pos(e);c.setPointerCapture(e.pointerId);if(Math.abs(x-S.ball)<23){S.drag=true;S.lounge=false;S.v=0;lastX=x;lastT=performance.now()}else if(Math.abs(x-S.x)<58){S.pet=1;S.company=Math.min(10,S.company+2);S.lounge=false;S.nextLounge=performance.now()+12000;S.lastWander=performance.now()}else{S.food=x;S.lounge=false;S.lastWander=performance.now()}});c.addEventListener('pointermove',e=>{if(!S.drag)return;let x=pos(e),t=performance.now();S.v=clamp((x-lastX)/Math.max(.016,(t-lastT)/1000),-155,155);S.ball=clamp(x,18,882);lastX=x;lastT=t});function release(){if(S.drag){S.drag=false;S.chase=true}}c.addEventListener('pointerup',release);c.addEventListener('pointercancel',release);document.querySelector('#pet').onclick=()=>{S.pet=1;S.company=Math.min(10,S.company+2);S.lounge=false;S.nextLounge=performance.now()+12000;S.lastWander=performance.now()};
