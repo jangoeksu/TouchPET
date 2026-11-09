@@ -278,21 +278,19 @@ final class PetCanvas: NSView {
         let w = bounds.width, h = bounds.height
         guard w > 0 && h > 0 else { return }
         let now = Date()
-        let top = NSColor(red: 0.42, green: 0.73, blue: 0.96, alpha: 1)
-        let bottom = NSColor(red: 0.84, green: 0.94, blue: 1, alpha: 1)
+        let top = NSColor(red: 0.64, green: 0.84, blue: 0.98, alpha: 1)
+        let bottom = NSColor(red: 0.89, green: 0.96, blue: 1, alpha: 1)
         NSGradient(starting: top, ending: bottom)?.draw(in: bounds, angle: -90)
         let t = state.tick
         let textColor = NSColor(red: 0.16, green: 0.29, blue: 0.40, alpha: 1)
-        let groundY = h * 0.18
+        let groundY = h * 0.075
 
-        // Permanent clear-blue sky: sun and fluffy clouds, never rain.
-        oval(w * 0.14, h * 0.52, h * 0.3, h * 0.3, NSColor(red: 1, green: 0.93, blue: 0.68, alpha: 1))
-        for i in 0..<4 {
-            let xx = (CGFloat(i) * 0.23 + 0.11) * w + sin(t * 0.11 + CGFloat(i)) * 5
-            oval(xx, h * 0.54, h * 0.55, h * 0.14, .white)
-            oval(xx + h * 0.1, h * 0.58, h * 0.3, h * 0.16, .white)
+        // Minimal pastel-blue background with only a few faint small clouds.
+        for i in 0..<3 {
+            let xx = (CGFloat(i) * 0.32 + 0.10) * w + sin(t * 0.1 + CGFloat(i)) * 4
+            oval(xx, h * 0.70, h * 0.40, h * 0.10, NSColor.white.withAlphaComponent(0.45))
         }
-        rectangle(0, 0, w, groundY, NSColor(red: 0.28, green: 0.6, blue: 0.36, alpha: 1))
+        rectangle(0, 0, w, groundY, NSColor(red: 0.62, green: 0.78, blue: 0.74, alpha: 1))
         (PetCanvas.clock.string(from: now) as NSString).draw(
             at: NSPoint(x: w - 42, y: h - 13),
             withAttributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium),
@@ -333,11 +331,6 @@ final class PetCanvas: NSView {
                 at: NSPoint(x: cx + heart.x - 4, y: groundY + 14 + heart.age * 8),
                 withAttributes: [.font: NSFont.systemFont(ofSize: 9),
                                  .foregroundColor: NSColor.systemPink.withAlphaComponent(1 - heart.age)])
-        }
-        if state.sleeping {
-            ("zZ" as NSString).draw(
-                at: NSPoint(x: cx + state.direction * 5 + 6, y: groundY + 12),
-                withAttributes: [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.white])
         }
 
         let line = "HUNGER \(Int(state.hunger.rounded()))/10  COMPANY \(Int(state.company.rounded()))/10"
