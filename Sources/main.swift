@@ -48,6 +48,10 @@ final class PetState {
     var landing: CGFloat = 0   // 1 -> 0, landing squash
     var hearts: [Heart] = []
 
+    // Blob Kitty needs: 0...10. Updated with elapsed real time.
+    var hunger: CGFloat = 10
+    var company: CGFloat = 10
+
     var views = NSHashTable<NSView>.weakObjects()
 
     func pet() {
@@ -58,7 +62,8 @@ final class PetState {
         if lastTap.count >= 3 { shelter.toggle(); lastTap.removeAll() }
         sleeping = false; recentActivity = now
         walkTarget = nil
-        queueHops(Int.random(in: 2...3))
+        company = min(10, company + 2)
+        // Blob Kitty stays on the ground when petted (no hopping).
         hearts.append(Heart(x: CGFloat.random(in: -8...8), age: 0))
         if hearts.count > 5 { hearts.removeFirst() }
     }
@@ -100,7 +105,10 @@ final class PetState {
     /// Advances the simulation. Uses real elapsed time so speed is frame-rate independent.
     func update() {
         let now = Date()
-        let dt = CGFloat(min(max(now.timeIntervalSince(lastUpdate), 0), 0.1))
+        let elapsed = CGFloat(max(0, now.timeIntervalSince(lastUpdate)))
+        let dt = min(elapsed, 0.1)
+        hunger = max(0, hunger - min(elapsed, 60) / 18)
+        company = max(0, company - min(elapsed, 60) / 22)
         lastUpdate = now
         tick += dt * 1.6
 
@@ -129,6 +137,7 @@ final class PetState {
             x += max(-0.12 * dt, min(0.12 * dt, food - x))
             if abs(food - x) < 0.022 {
                 snack = nil; feeds += 1
+                hunger = min(10, hunger + 4)
                 defaults.set(feeds, forKey: "feeds")
                 recentActivity = now
             }
@@ -187,32 +196,65 @@ final class PetCanvas: NSView {
         c.setFill(); NSRect(x: x, y: y, width: w, height: h).fill()
     }
 
-    /// Draws the cat with its feet at the local origin (0,0). The caller scales/translates.
+    /// Rounded Blob Kitty silhouette, matching the updated browser preview.
+    /// Feet are at y=0; draw(_:) scales these coordinates for the Touch Bar.
     private func drawCat(t: CGFloat, blink: Bool) {
-        let fur = NSColor.white, outline = NSColor(white: 0.80, alpha: 1)
-        let d = state.direction
-        for i in 0..<6 {
-            let s = CGFloat(i)
-            oval(-d * (15 + s * 3.2), 8 + sin(t * 2.2 + s * 0.35) * 2.5 + sin(s * 0.45) * 9,
-                 11, 9, i % 2 == 0 ? fur : outline)
-        }
-        oval(-13, 0, 27, state.sleeping ? 13 : 18, fur)
-        let hx = d * 7
-        oval(hx - 10, 9, 19, 16, fur)
+        let fur = NSColor(red: 1, green: 0.973, blue: 0.949, alpha: 1)
+        let shade = NSColor(red: 0.91, green: 0.867, blue: 0.843, alpha: 1)
+        let pink = NSColor(red: 0.91, green: 0.67, blue: 0.71, alpha: 1)
+        let ink = NSColor(red: 0.16, green: 0.20, blue: 0.24, alpha: 1)
+        let sad = state.hunger <= 3 || state.company <= 3
+        let breath = sin(t * 1.3) * 0.6
+        // Tail, four little feet and a round body.
+        let tail = NSBezierPath()
+        tail.lineWidth = 6
+        tail.lineCapStyle = .round
+        tail.move(to: NSPoint(x: 19, y: 12))
+        tail.curve(to: NSPoint(x: 32, y: 12),
+                   controlPoint1: NSPoint(x: 30, y: 22),
+                   controlPoint2: NSPoint(x: 36, y: 5))
+        fur.setStroke(); tail.stroke()
+        oval(-24, 0, 17, 11, shade)
+        oval(7, 0, 17, 11, shade)
+        oval(-24, 0, 17, 7, fur)
+        oval(7, 0, 17, 7, fur)
+        oval(-29, 5 + breath, 58, 48, shade)
+        oval(-29, 7 + breath, 58, 48, fur)
+
+        // Triangular ears with soft pink interiors.
         for side in [-1.0 as CGFloat, 1.0] {
             let ear = NSBezierPath()
-            ear.move(to: NSPoint(x: hx + side * 3, y: 19))
-            ear.line(to: NSPoint(x: hx + side * 8, y: 30))
-            ear.line(to: NSPoint(x: hx + side * 9, y: 16))
-            ear.close(); fur.setFill(); ear.fill()
-            oval(hx + side * 4 - 2, 24, 4, 4, .systemPink)
-            if state.sleeping || blink {
-                rectangle(hx + side * 4 - 3, 17, 6, 1.2, .darkGray)
-            } else {
-                oval(hx + side * 4 - 1, 16, 2.3, 3.5, .darkGray)
-            }
+            ear.move(to: NSPoint(x: side * 12, y: 46 + breath))
+            ear.line(to: NSPoint(x: side * 24, y: 65 + breath))
+            ear.line(to: NSPoint(x: side * 27, y: 37 + breath))
+            ear.close()
+            fur.setFill(); ear.fill()
+            let inner = NSBezierPath()
+            inner.move(to: NSPoint(x: side * 17, y: 47 + breath))
+            inner.line(to: NSPoint(x: side * 23, y: 58 + breath))
+            inner.line(to: NSPoint(x: side * 23, y: 43 + breath))
+            inner.close()
+            pink.setFill(); inner.fill()
         }
-        oval(hx - 1, 12, 3, 2, .systemPink)
+        let eyeHeight: CGFloat = blink ? 1.5 : 13
+        oval(-16, 29 + breath, 10, eyeHeight, ink)
+        oval(6, 29 + breath, 10, eyeHeight, ink)
+        if !blink {
+            oval(-13, 37 + breath, 3, 4, .white)
+            oval(9, 37 + breath, 3, 4, .white)
+        }
+        oval(-3, 24 + breath, 6, 4, pink)
+        oval(-23, 21 + breath, 9, 4, pink.withAlphaComponent(0.65))
+        oval(14, 21 + breath, 9, 4, pink.withAlphaComponent(0.65))
+
+        let mouth = NSBezierPath()
+        mouth.lineWidth = 1.5
+        mouth.lineCapStyle = .round
+        mouth.move(to: NSPoint(x: -5, y: sad ? 16 : 18))
+        mouth.line(to: NSPoint(x: 0, y: sad ? 19 : 16))
+        mouth.line(to: NSPoint(x: 5, y: sad ? 16 : 18))
+        NSColor(red: 0.59, green: 0.43, blue: 0.47, alpha: 1).setStroke()
+        mouth.stroke()
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -293,7 +335,7 @@ final class PetCanvas: NSView {
         oval(cx - shadowW / 2, groundY - 1.5, shadowW, 3, NSColor(white: 0, alpha: 0.2))
 
         // The cat is ~30 units tall in local space; scale it so it (and a hop) fit the 30pt bar.
-        let base: CGFloat = 0.58
+        let base: CGFloat = 0.31
         let sy = base * (1 + 0.10 * state.jump - 0.12 * state.landing)
         let sx = base * (1 - 0.06 * state.jump + 0.10 * state.landing)
         NSGraphicsContext.saveGraphicsState()
@@ -301,7 +343,7 @@ final class PetCanvas: NSView {
         xf.translateX(by: cx, yBy: groundY + 0.6 + hopPx)
         xf.scaleX(by: sx, yBy: sy)
         xf.concat()
-        drawCat(t: t, blink: Int(t * 3) % 11 == 0)
+        drawCat(t: t, blink: Int(t * 3) % 37 == 0)
         NSGraphicsContext.restoreGraphicsState()
 
         // Hearts and zZ are drawn unscaled so they stay crisp.
@@ -317,7 +359,7 @@ final class PetCanvas: NSView {
                 withAttributes: [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.white])
         }
 
-        let line = "PET \(state.pets)  FED \(state.feeds)  PLAY \(state.games)  CLEAN \(state.cleans)"
+        let line = "HUNGER \(Int(state.hunger.rounded()))/10  COMPANY \(Int(state.company.rounded()))/10"
         (line as NSString).draw(
             at: NSPoint(x: w * 0.24, y: h - 10),
             withAttributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 8, weight: .medium),
