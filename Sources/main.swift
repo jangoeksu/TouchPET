@@ -216,95 +216,145 @@ final class PetCanvas: NSView {
         c.setFill(); NSRect(x: x, y: y, width: w, height: h).fill()
     }
 
-    /// Cocoa-and-cream cartoon blob kitten, floppy ears, swishy tail and huge blue eyes.
+    /// Kawaii kitten: unmistakable pointed ears, whiskers, muzzle and curved cat tail.
     private func drawCat(t: CGFloat, blink: Bool) {
-        let cocoa = NSColor(red: 0.77, green: 0.59, blue: 0.46, alpha: 1)
-        let white = NSColor(red: 1, green: 0.97, blue: 0.91, alpha: 1)
-        let pink = NSColor(red: 1, green: 0.60, blue: 0.70, alpha: 1)
-        let blue = NSColor(red: 0.13, green: 0.55, blue: 0.96, alpha: 1)
-        let iris = NSColor(red: 0.07, green: 0.31, blue: 0.64, alpha: 1)
-        let ink = NSColor(red: 0.41, green: 0.29, blue: 0.30, alpha: 1)
+        let fur = NSColor(red: 0.80, green: 0.65, blue: 0.52, alpha: 1)
+        let cream = NSColor(red: 1.0, green: 0.97, blue: 0.91, alpha: 1)
+        let earPink = NSColor(red: 1.0, green: 0.67, blue: 0.72, alpha: 1)
+        let blue = NSColor(red: 0.17, green: 0.58, blue: 0.98, alpha: 1)
+        let pupil = NSColor(red: 0.07, green: 0.28, blue: 0.58, alpha: 1)
+        let ink = NSColor(red: 0.39, green: 0.27, blue: 0.30, alpha: 1)
         let beingPetted = Date() < state.pettingUntil
-        let bob = sin(t * (beingPetted ? 5 : 1.3)) * (beingPetted ? 1.3 : 0.5)
+        let bob = sin(t * (beingPetted ? 4.5 : 1.3)) * (beingPetted ? 1.1 : 0.4)
         let sad = state.hunger <= 3 || state.company <= 3
 
-        // Whimsically curled tail behind the body.
+        // Tail curls upward like a question mark, behind the body.
         let tail = NSBezierPath()
-        tail.lineWidth = 9
+        tail.lineWidth = 8
         tail.lineCapStyle = .round
-        tail.move(to: NSPoint(x: 22, y: 18))
-        tail.curve(to: NSPoint(x: 38, y: 29 + sin(t * 1.2) * 2),
-                   controlPoint1: NSPoint(x: 37, y: 11),
-                   controlPoint2: NSPoint(x: 46, y: 27))
-        cocoa.setStroke(); tail.stroke()
-        oval(-23, 2, 17, 11, cocoa)
-        oval(7, 2, 17, 11, cocoa)
+        tail.move(to: NSPoint(x: 25, y: 14))
+        tail.curve(to: NSPoint(x: 38, y: 37 + sin(t * 0.8) * 2),
+                   controlPoint1: NSPoint(x: 45, y: 8),
+                   controlPoint2: NSPoint(x: 48, y: 30))
+        fur.setStroke(); tail.stroke()
 
-        // Large soft mochi body and irregular cream patches.
-        oval(-31, 7 + bob, 62, 52, cocoa)
-        oval(-21, 9 + bob, 28, 17, white)
-        oval(9, 44 + bob, 17, 10, white)
-        oval(-28, 31 + bob, 12, 12, white)
+        // Tiny rounded paws and a chubby, compact kitten silhouette.
+        oval(-25, 0, 19, 11, fur)
+        oval(6, 0, 19, 11, fur)
+        oval(-30, 8 + bob, 60, 48, fur)
 
-        // Floppy ears droop outward at their soft rounded ends.
+        // Pointed triangular ears with slightly curled tips (not round monkey ears).
         for side in [-1.0 as CGFloat, 1.0] {
             let ear = NSBezierPath()
-            ear.move(to: NSPoint(x: side * 14, y: 48 + bob))
-            ear.curve(to: NSPoint(x: side * 37, y: 39 + bob),
-                      controlPoint1: NSPoint(x: side * 22, y: 65 + bob),
-                      controlPoint2: NSPoint(x: side * 38, y: 60 + bob))
-            ear.curve(to: NSPoint(x: side * 14, y: 48 + bob),
-                      controlPoint1: NSPoint(x: side * 39, y: 31 + bob),
-                      controlPoint2: NSPoint(x: side * 23, y: 40 + bob))
-            cocoa.setFill(); ear.fill()
-            oval(side * 27 - 6, 43 + bob, 12, 8, pink.withAlphaComponent(0.65))
+            ear.move(to: NSPoint(x: side * 12, y: 46 + bob))
+            ear.line(to: NSPoint(x: side * 22, y: 72 + bob))
+            ear.line(to: NSPoint(x: side * 29, y: 66 + bob))
+            ear.line(to: NSPoint(x: side * 31, y: 44 + bob))
+            ear.close()
+            fur.setFill(); ear.fill()
+            let inner = NSBezierPath()
+            inner.move(to: NSPoint(x: side * 18, y: 49 + bob))
+            inner.line(to: NSPoint(x: side * 23, y: 64 + bob))
+            inner.line(to: NSPoint(x: side * 27, y: 49 + bob))
+            inner.close()
+            earPink.setFill(); inner.fill()
         }
 
-        // White eye patches make the giant sapphire eyes pop.
-        oval(-23, 28 + bob, 22, 23, white)
-        oval(1, 28 + bob, 22, 23, white)
+        // Only two little white markings, not a pale monkey-like face mask.
+        oval(-16, 9 + bob, 25, 13, cream)
+        oval(15, 48 + bob, 10, 7, cream)
+
+        // Blue eyes on the fur, a small cream muzzle with the cat's W-shaped mouth.
         if blink || beingPetted {
-            oval(-17, 37 + bob, 15, 3, iris)
-            oval(3, 37 + bob, 15, 3, iris)
+            oval(-18, 34 + bob, 14, 2.5, pupil)
+            oval(4, 34 + bob, 14, 2.5, pupil)
         } else {
-            oval(-18, 30 + bob, 17, 20, blue)
-            oval(1, 30 + bob, 17, 20, blue)
-            oval(-14, 31 + bob, 9, 14, iris)
-            oval(5, 31 + bob, 9, 14, iris)
-            oval(-14, 41 + bob, 6, 7, .white)
-            oval(5, 41 + bob, 6, 7, .white)
+            oval(-18, 28 + bob, 14, 18, blue)
+            oval(4, 28 + bob, 14, 18, blue)
+            oval(-14, 30 + bob, 7, 13, pupil)
+            oval(8, 30 + bob, 7, 13, pupil)
+            oval(-15, 38 + bob, 5, 6, .white)
+            oval(7, 38 + bob, 5, 6, .white)
         }
-        oval(-27, 23 + bob, 12, 7, pink.withAlphaComponent(0.6))
-        oval(15, 23 + bob, 12, 7, pink.withAlphaComponent(0.6))
-        oval(-4, 23 + bob, 8, 6, pink)
+        oval(-15, 20 + bob, 15, 9, cream)
+        oval(0, 20 + bob, 15, 9, cream)
+
+        // Small inverted pink triangle clearly reads as a cat nose.
+        let nose = NSBezierPath()
+        nose.move(to: NSPoint(x: -5, y: 26 + bob))
+        nose.line(to: NSPoint(x: 5, y: 26 + bob))
+        nose.line(to: NSPoint(x: 0, y: 21 + bob))
+        nose.close(); earPink.setFill(); nose.fill()
+
         let mouth = NSBezierPath()
         mouth.lineWidth = 1.5
         mouth.lineCapStyle = .round
-        mouth.move(to: NSPoint(x: -4, y: sad ? 17 : 19))
-        mouth.line(to: NSPoint(x: 0, y: sad ? 20 : 16))
-        mouth.line(to: NSPoint(x: 4, y: sad ? 17 : 19))
+        mouth.move(to: NSPoint(x: 0, y: 21 + bob))
+        mouth.line(to: NSPoint(x: 0, y: 17 + bob))
+        mouth.move(to: NSPoint(x: -6, y: sad ? 15 : 17 + bob))
+        mouth.curve(to: NSPoint(x: 0, y: sad ? 17 : 15 + bob),
+                    controlPoint1: NSPoint(x: -5, y: sad ? 18 : 13 + bob),
+                    controlPoint2: NSPoint(x: -2, y: sad ? 18 : 13 + bob))
+        mouth.curve(to: NSPoint(x: 6, y: sad ? 15 : 17 + bob),
+                    controlPoint1: NSPoint(x: 2, y: sad ? 18 : 13 + bob),
+                    controlPoint2: NSPoint(x: 5, y: sad ? 18 : 13 + bob))
         ink.setStroke(); mouth.stroke()
+
+        // Three short whiskers on each side.
+        let whiskers = NSBezierPath()
+        whiskers.lineWidth = 1
+        whiskers.lineCapStyle = .round
+        for side in [-1.0 as CGFloat, 1.0] {
+            for offset in [-5.0 as CGFloat, 0.0, 5.0] {
+                whiskers.move(to: NSPoint(x: side * 15, y: 21 + bob + offset * 0.35))
+                whiskers.line(to: NSPoint(x: side * 28, y: 21 + bob + offset))
+            }
+        }
+        ink.withAlphaComponent(0.65).setStroke(); whiskers.stroke()
+        oval(-26, 23 + bob, 7, 4, earPink.withAlphaComponent(0.65))
+        oval(19, 23 + bob, 7, 4, earPink.withAlphaComponent(0.65))
     }
 
     private func drawLoungingKitty(t: CGFloat) {
-        let cocoa = NSColor(red: 0.77, green: 0.59, blue: 0.46, alpha: 1)
-        let white = NSColor(red: 1, green: 0.97, blue: 0.91, alpha: 1)
-        let pink = NSColor(red: 1, green: 0.60, blue: 0.70, alpha: 1)
-        let blue = NSColor(red: 0.13, green: 0.55, blue: 0.96, alpha: 1)
-        let wiggle = sin(t * 2) * 1.4
-        oval(-32, 5, 64, 43, cocoa)
-        oval(-22, 9, 44, 29, white)
-        oval(-27, 32 + wiggle, 16, 15, cocoa)
-        oval(11, 32 - wiggle, 16, 15, cocoa)
-        oval(-23, 39 + wiggle, 8, 5, pink)
-        oval(15, 39 - wiggle, 8, 5, pink)
-        oval(-22, 3, 15, 12, cocoa)
-        oval(7, 3, 15, 12, cocoa)
-        oval(-19, 22, 11, 8, blue)
-        oval(8, 22, 11, 8, blue)
-        oval(-16, 26, 4, 4, .white)
-        oval(11, 26, 4, 4, .white)
-        oval(-4, 16, 8, 5, pink)
+        let fur = NSColor(red: 0.80, green: 0.65, blue: 0.52, alpha: 1)
+        let cream = NSColor(red: 1, green: 0.97, blue: 0.91, alpha: 1)
+        let pink = NSColor(red: 1, green: 0.67, blue: 0.72, alpha: 1)
+        let blue = NSColor(red: 0.17, green: 0.58, blue: 0.98, alpha: 1)
+        let wiggle = sin(t * 2) * 1.1
+        // Belly-up pose still has visible triangular ears and kitten whiskers.
+        let tail = NSBezierPath()
+        tail.lineWidth = 7
+        tail.lineCapStyle = .round
+        tail.move(to: NSPoint(x: 24, y: 11))
+        tail.curve(to: NSPoint(x: 35, y: 31),
+                   controlPoint1: NSPoint(x: 45, y: 5),
+                   controlPoint2: NSPoint(x: 43, y: 24))
+        fur.setStroke(); tail.stroke()
+        oval(-31, 5, 62, 42, fur)
+        oval(-22, 9, 44, 29, cream)
+        for side in [-1.0 as CGFloat, 1.0] {
+            let ear = NSBezierPath()
+            ear.move(to: NSPoint(x: side * 12, y: 36))
+            ear.line(to: NSPoint(x: side * 22, y: 51))
+            ear.line(to: NSPoint(x: side * 28, y: 35))
+            ear.close(); fur.setFill(); ear.fill()
+            oval(side * 21 - 3, 37, 6, 7, pink)
+        }
+        oval(-25, 31 + wiggle, 14, 13, fur)
+        oval(11, 31 - wiggle, 14, 13, fur)
+        oval(-22, 36 + wiggle, 7, 4, pink)
+        oval(15, 36 - wiggle, 7, 4, pink)
+        oval(-18, 19, 9, 9, blue)
+        oval(9, 19, 9, 9, blue)
+        oval(-16, 23, 3, 4, .white)
+        oval(11, 23, 3, 4, .white)
+        let nose = NSBezierPath()
+        nose.move(to: NSPoint(x: -4, y: 15))
+        nose.line(to: NSPoint(x: 4, y: 15))
+        nose.line(to: NSPoint(x: 0, y: 11))
+        nose.close(); pink.setFill(); nose.fill()
+        oval(-23, 12, 7, 3, pink)
+        oval(16, 12, 7, 3, pink)
     }
 
     override func draw(_ dirtyRect: NSRect) {
