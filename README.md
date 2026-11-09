@@ -35,7 +35,11 @@ open dist/TouchBarPET.app --args --preview
 ```
 
 The same drawing, mouse interactions, and saved counters are used for the on-screen
-preview and the physical Touch Bar. Click the cat to pet it, click empty space to
+preview and the physical Touch Bar. **`--preview` now opens the preview window in
+addition to attempting to show the pet on the physical Touch Bar.** To start
+without a preview window, use `open dist/TouchBarPET.app` without arguments.
+The pink ball continues rolling when released, bounces off the edges, and the
+cat chases it. This applies to both the preview and the hardware view. Click the cat to pet it, click empty space to
 feed it, and drag the ball to play. You can also select **Open on-screen preview**
 from the menu bar at any time. If another copy of TouchBarPET is already running,
 quit it first so the new `--preview` argument takes effect.
