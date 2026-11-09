@@ -44,6 +44,7 @@ final class PetState {
     let jump: CGFloat = 0
     let landing: CGFloat = 0
     var hearts: [Heart] = []
+    var pettingUntil = Date.distantPast
 
     // Blob Kitty needs: 0...10. Updated with elapsed real time.
     var hunger: CGFloat = 10
@@ -59,6 +60,7 @@ final class PetState {
         sleeping = false; lounging = false; recentActivity = now
         walkTarget = nil
         company = min(10, company + 2)
+        pettingUntil = now.addingTimeInterval(1.3)
         // Blob Kitty stays on the ground when petted (no hopping).
         hearts.append(Heart(x: CGFloat.random(in: -8...8), age: 0))
         if hearts.count > 5 { hearts.removeFirst() }
@@ -219,11 +221,12 @@ final class PetCanvas: NSView {
         let fur = NSColor(red: 1, green: 0.976, blue: 0.951, alpha: 1)
         let pink = NSColor(red: 1, green: 0.72, blue: 0.79, alpha: 1)
         let ink = NSColor(red: 0.18, green: 0.23, blue: 0.33, alpha: 1)
-        let bob = sin(t * 1.3) * 0.6
+        let beingPetted = Date() < state.pettingUntil
+        let bob = sin(t * (beingPetted ? 5.0 : 1.3)) * (beingPetted ? 1.5 : 0.6)
         let sad = state.hunger <= 3 || state.company <= 3
         oval(-24, 1, 16, 10, fur)
         oval(8, 1, 16, 10, fur)
-        oval(-28, 7 + bob, 56, 50, fur)
+        oval(-30, 7 + bob, 60, 53, fur)
         for side in [-1.0 as CGFloat, 1.0] {
             let ear = NSBezierPath()
             ear.move(to: NSPoint(x: side * 12, y: 48 + bob))
@@ -232,11 +235,11 @@ final class PetCanvas: NSView {
             ear.close(); fur.setFill(); ear.fill()
             oval(side * 18 - 3, 47 + bob, 6, 8, pink)
         }
-        oval(-24, 23 + bob, 12, 7, pink.withAlphaComponent(0.75))
-        oval(12, 23 + bob, 12, 7, pink.withAlphaComponent(0.75))
-        oval(-16, 30 + bob, 12, blink ? 2 : 14, ink)
-        oval(4, 30 + bob, 12, blink ? 2 : 14, ink)
-        if !blink {
+        oval(-25, 23 + bob, 14, 8, pink.withAlphaComponent(0.75))
+        oval(11, 23 + bob, 14, 8, pink.withAlphaComponent(0.75))
+        oval(-17, 30 + bob, 13, blink || beingPetted ? 2 : 15, ink)
+        oval(4, 30 + bob, 13, blink || beingPetted ? 2 : 15, ink)
+        if !blink && !beingPetted {
             oval(-13, 38 + bob, 4, 5, .white)
             oval(7, 38 + bob, 4, 5, .white)
         }
@@ -302,12 +305,8 @@ final class PetCanvas: NSView {
         if let food = state.snack {
             for dx in [-4.0, 0.0, 4.0] { oval(food * w + CGFloat(dx), groundY, 3.5, 3.5, .orange) }
         }
-        // Rolling pink ball with a rotating highlight.
+        // Matte pink ball, without highlights or shine.
         oval(state.ball * w - 6, groundY - 1, 12, 12, .systemPink)
-        let glintX = cos(state.ballSpin) * 2.5
-        let glintY = sin(state.ballSpin) * 2.5
-        oval(state.ball * w - 2 + glintX, groundY + 5 + glintY, 3, 3,
-             NSColor(red: 1, green: 0.86, blue: 0.92, alpha: 1))
 
         // Cat
         let cx = state.x * w
@@ -316,7 +315,7 @@ final class PetCanvas: NSView {
         oval(cx - shadowW / 2, groundY - 1.5, shadowW, 3, NSColor(white: 0, alpha: 0.2))
 
         // The cat is ~30 units tall in local space; scale it so it (and a hop) fit the 30pt bar.
-        let base: CGFloat = 0.31
+        let base: CGFloat = 0.37
         let sy = base * (1 + 0.10 * state.jump - 0.12 * state.landing)
         let sx = base * (1 - 0.06 * state.jump + 0.10 * state.landing)
         NSGraphicsContext.saveGraphicsState()
@@ -363,7 +362,8 @@ final class PetCanvas: NSView {
         }
         for (i, p) in state.poop.enumerated() { consider(.poop(i), center: p, radius: 18) }
         consider(.ball, center: state.ball, radius: 16)
-        consider(.cat, center: state.x, radius: 26)
+        // Finger-sized hit target is wider than the small visual sprite.
+        consider(.cat, center: state.x, radius: 40)
 
         draggingBall = false
         switch best?.hit {
@@ -520,6 +520,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         item.button?.title = "PET"
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Show cat", action: #selector(show), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Pet Kitty", action: #selector(petKitty), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Hide cat", action: #selector(hide), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Open on-screen preview", action: #selector(showPreview), keyEquivalent: ""))
         menu.addItem(.separator())
@@ -614,6 +615,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     }
 
     // MARK: Actions
+
+    @objc func petKitty() { PetState.shared.pet() }
 
     @objc func show() {
         wantVisible = true
