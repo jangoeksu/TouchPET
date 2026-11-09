@@ -181,7 +181,7 @@ final class PetState {
 // MARK: - View
 
 final class PetCanvas: NSView {
-    static let size = NSSize(width: 610, height: 30)
+    static let size = NSSize(width: 1085, height: 30)
     private static let clock: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "HH:mm"; return f
     }()
@@ -216,70 +216,103 @@ final class PetCanvas: NSView {
         c.setFill(); NSRect(x: x, y: y, width: w, height: h).fill()
     }
 
-    /// Soft toy-like Blob Kitty, all circles, tiny paws, bright eyes and pink cheeks.
+    /// Cocoa-and-cream cartoon blob kitten, floppy ears, swishy tail and huge blue eyes.
     private func drawCat(t: CGFloat, blink: Bool) {
-        let fur = NSColor(red: 1, green: 0.976, blue: 0.951, alpha: 1)
-        let pink = NSColor(red: 1, green: 0.72, blue: 0.79, alpha: 1)
-        let ink = NSColor(red: 0.18, green: 0.23, blue: 0.33, alpha: 1)
+        let cocoa = NSColor(red: 0.77, green: 0.59, blue: 0.46, alpha: 1)
+        let white = NSColor(red: 1, green: 0.97, blue: 0.91, alpha: 1)
+        let pink = NSColor(red: 1, green: 0.60, blue: 0.70, alpha: 1)
+        let blue = NSColor(red: 0.13, green: 0.55, blue: 0.96, alpha: 1)
+        let iris = NSColor(red: 0.07, green: 0.31, blue: 0.64, alpha: 1)
+        let ink = NSColor(red: 0.41, green: 0.29, blue: 0.30, alpha: 1)
         let beingPetted = Date() < state.pettingUntil
-        let bob = sin(t * (beingPetted ? 5.0 : 1.3)) * (beingPetted ? 1.5 : 0.6)
+        let bob = sin(t * (beingPetted ? 5 : 1.3)) * (beingPetted ? 1.3 : 0.5)
         let sad = state.hunger <= 3 || state.company <= 3
-        oval(-24, 1, 16, 10, fur)
-        oval(8, 1, 16, 10, fur)
-        oval(-30, 7 + bob, 60, 53, fur)
+
+        // Whimsically curled tail behind the body.
+        let tail = NSBezierPath()
+        tail.lineWidth = 9
+        tail.lineCapStyle = .round
+        tail.move(to: NSPoint(x: 22, y: 18))
+        tail.curve(to: NSPoint(x: 38, y: 29 + sin(t * 1.2) * 2),
+                   controlPoint1: NSPoint(x: 37, y: 11),
+                   controlPoint2: NSPoint(x: 46, y: 27))
+        cocoa.setStroke(); tail.stroke()
+        oval(-23, 2, 17, 11, cocoa)
+        oval(7, 2, 17, 11, cocoa)
+
+        // Large soft mochi body and irregular cream patches.
+        oval(-31, 7 + bob, 62, 52, cocoa)
+        oval(-21, 9 + bob, 28, 17, white)
+        oval(9, 44 + bob, 17, 10, white)
+        oval(-28, 31 + bob, 12, 12, white)
+
+        // Floppy ears droop outward at their soft rounded ends.
         for side in [-1.0 as CGFloat, 1.0] {
             let ear = NSBezierPath()
-            ear.move(to: NSPoint(x: side * 12, y: 48 + bob))
-            ear.line(to: NSPoint(x: side * 21, y: 62 + bob))
-            ear.line(to: NSPoint(x: side * 25, y: 43 + bob))
-            ear.close(); fur.setFill(); ear.fill()
-            oval(side * 18 - 3, 47 + bob, 6, 8, pink)
+            ear.move(to: NSPoint(x: side * 14, y: 48 + bob))
+            ear.curve(to: NSPoint(x: side * 37, y: 39 + bob),
+                      controlPoint1: NSPoint(x: side * 22, y: 65 + bob),
+                      controlPoint2: NSPoint(x: side * 38, y: 60 + bob))
+            ear.curve(to: NSPoint(x: side * 14, y: 48 + bob),
+                      controlPoint1: NSPoint(x: side * 39, y: 31 + bob),
+                      controlPoint2: NSPoint(x: side * 23, y: 40 + bob))
+            cocoa.setFill(); ear.fill()
+            oval(side * 27 - 6, 43 + bob, 12, 8, pink.withAlphaComponent(0.65))
         }
-        oval(-25, 23 + bob, 14, 8, pink.withAlphaComponent(0.75))
-        oval(11, 23 + bob, 14, 8, pink.withAlphaComponent(0.75))
-        oval(-17, 30 + bob, 13, blink || beingPetted ? 2 : 15, ink)
-        oval(4, 30 + bob, 13, blink || beingPetted ? 2 : 15, ink)
-        if !blink && !beingPetted {
-            oval(-13, 38 + bob, 4, 5, .white)
-            oval(7, 38 + bob, 4, 5, .white)
+
+        // White eye patches make the giant sapphire eyes pop.
+        oval(-23, 28 + bob, 22, 23, white)
+        oval(1, 28 + bob, 22, 23, white)
+        if blink || beingPetted {
+            oval(-17, 37 + bob, 15, 3, iris)
+            oval(3, 37 + bob, 15, 3, iris)
+        } else {
+            oval(-18, 30 + bob, 17, 20, blue)
+            oval(1, 30 + bob, 17, 20, blue)
+            oval(-14, 31 + bob, 9, 14, iris)
+            oval(5, 31 + bob, 9, 14, iris)
+            oval(-14, 41 + bob, 6, 7, .white)
+            oval(5, 41 + bob, 6, 7, .white)
         }
-        oval(-3, 26 + bob, 6, 4, pink)
+        oval(-27, 23 + bob, 12, 7, pink.withAlphaComponent(0.6))
+        oval(15, 23 + bob, 12, 7, pink.withAlphaComponent(0.6))
+        oval(-4, 23 + bob, 8, 6, pink)
         let mouth = NSBezierPath()
-        mouth.lineWidth = 1.6
+        mouth.lineWidth = 1.5
         mouth.lineCapStyle = .round
-        mouth.move(to: NSPoint(x: -4, y: sad ? 19 : 22))
-        mouth.line(to: NSPoint(x: 0, y: sad ? 22 : 19))
-        mouth.line(to: NSPoint(x: 4, y: sad ? 19 : 22))
+        mouth.move(to: NSPoint(x: -4, y: sad ? 17 : 19))
+        mouth.line(to: NSPoint(x: 0, y: sad ? 20 : 16))
+        mouth.line(to: NSPoint(x: 4, y: sad ? 17 : 19))
         ink.setStroke(); mouth.stroke()
     }
 
-    /// Occasionally flops onto a chubby belly-up silhouette.
     private func drawLoungingKitty(t: CGFloat) {
-        let fur = NSColor(red: 1, green: 0.976, blue: 0.951, alpha: 1)
-        let pink = NSColor(red: 1, green: 0.72, blue: 0.79, alpha: 1)
-        let ink = NSColor(red: 0.18, green: 0.23, blue: 0.33, alpha: 1)
-        let wiggle = sin(t * 2) * 1.1
-        oval(-31, 4, 62, 40, fur)
-        oval(-17, 9, 34, 24, NSColor(red: 1, green: 0.91, blue: 0.92, alpha: 1))
-        oval(-25, 31 + wiggle, 14, 17, fur)
-        oval(11, 31 - wiggle, 14, 17, fur)
-        oval(-19, 39 + wiggle, 5, 5, pink)
-        oval(15, 39 - wiggle, 5, 5, pink)
-        oval(-25, 4, 15, 12, fur)
-        oval(10, 4, 15, 12, fur)
-        oval(-17, 20, 6, 3, ink)
-        oval(11, 20, 6, 3, ink)
-        oval(-3, 16, 6, 4, pink)
-        oval(-26, 13, 9, 5, pink.withAlphaComponent(0.7))
-        oval(17, 13, 9, 5, pink.withAlphaComponent(0.7))
+        let cocoa = NSColor(red: 0.77, green: 0.59, blue: 0.46, alpha: 1)
+        let white = NSColor(red: 1, green: 0.97, blue: 0.91, alpha: 1)
+        let pink = NSColor(red: 1, green: 0.60, blue: 0.70, alpha: 1)
+        let blue = NSColor(red: 0.13, green: 0.55, blue: 0.96, alpha: 1)
+        let wiggle = sin(t * 2) * 1.4
+        oval(-32, 5, 64, 43, cocoa)
+        oval(-22, 9, 44, 29, white)
+        oval(-27, 32 + wiggle, 16, 15, cocoa)
+        oval(11, 32 - wiggle, 16, 15, cocoa)
+        oval(-23, 39 + wiggle, 8, 5, pink)
+        oval(15, 39 - wiggle, 8, 5, pink)
+        oval(-22, 3, 15, 12, cocoa)
+        oval(7, 3, 15, 12, cocoa)
+        oval(-19, 22, 11, 8, blue)
+        oval(8, 22, 11, 8, blue)
+        oval(-16, 26, 4, 4, .white)
+        oval(11, 26, 4, 4, .white)
+        oval(-4, 16, 8, 5, pink)
     }
 
     override func draw(_ dirtyRect: NSRect) {
         let w = bounds.width, h = bounds.height
         guard w > 0 && h > 0 else { return }
         let now = Date()
-        let top = NSColor(red: 0.64, green: 0.84, blue: 0.98, alpha: 1)
-        let bottom = NSColor(red: 0.89, green: 0.96, blue: 1, alpha: 1)
+        let top = NSColor(red: 0.23, green: 0.61, blue: 0.98, alpha: 1)
+        let bottom = NSColor(red: 0.58, green: 0.84, blue: 1, alpha: 1)
         NSGradient(starting: top, ending: bottom)?.draw(in: bounds, angle: -90)
         let t = state.tick
         let textColor = NSColor(red: 0.16, green: 0.29, blue: 0.40, alpha: 1)
@@ -677,7 +710,11 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
                   makeItemForIdentifier identifier: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
         guard identifier == PetApp.canvasID else { return nil }
         let item = NSCustomTouchBarItem(identifier: identifier)
-        item.view = PetCanvas(frame: NSRect(origin: .zero, size: PetCanvas.size))
+        let canvas = PetCanvas(frame: NSRect(origin: .zero, size: PetCanvas.size))
+        canvas.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        canvas.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        item.view = canvas
+        item.visibilityPriority = .high
         return item
     }
 }
