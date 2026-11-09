@@ -18,6 +18,13 @@ chmod +x build.sh install.sh uninstall.sh
 open dist/TouchBarPET.app
 ```
 
+The build script checks the active Apple Swift compiler against the Swift standard
+library in each installed macOS SDK. If the selected SDK is too new (for example,
+Swift 6.3 with SDK 27 requiring Swift 6.4), it uses a compatible installed SDK
+instead. If none matches, the script prints an actionable error before removing
+any previously built app. On a Mac with older Command Line Tools, install a
+matching set of tools if the error persists; full Xcode is not otherwise required.
+
 ### Test without a physical Touch Bar
 
 TouchBarPET can now display its interactive pet directly in a small floating window.
