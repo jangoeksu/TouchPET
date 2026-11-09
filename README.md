@@ -10,6 +10,18 @@ Native macOS Touch Bar pet (Swift + a small Objective-C bridge). Menu-bar app, n
 - Saved PET / FED / PLAY / CLEAN counters
 - Animated clouds and a day/night sky in the native app
 
+## Current Blob Kitty behavior
+
+- Permanently blue sky with slowly drifting white clouds; no rain, night mode or house
+- Rounded, toy-like white kitty with oversized eyes, rosy cheeks and tiny paws
+- Slow wandering, occasional 3–6-second belly-up lounging with little waving paws
+- Gentle ball physics: slower release, rolling friction and edge bouncing; the ball can still move faster than the kitty
+- Petting restores company; snacks restore hunger; low needs trigger a sad expression
+- The native Touch Bar and the macOS floating preview share the same Swift model and view
+- Passing `--preview` opens an extra floating preview **without intentionally suppressing** the hardware Touch Bar
+
+Note: macOS Touch Bar presentation uses undocumented Apple APIs and requires testing on a compatible Touch Bar Mac.
+
 ## Build (macOS)
 
 ```bash
