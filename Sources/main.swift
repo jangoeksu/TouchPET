@@ -526,8 +526,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     private var trayItem: NSCustomTouchBarItem?
     private var statusItem: NSStatusItem?
     private var previewWindow: NSPanel?
-    // --preview opens an additional window while keeping the hardware Touch Bar active.
-    private let previewMode = ProcessInfo.processInfo.arguments.contains("--preview")
+    // Preserve the normal macOS Touch Bar unless the user explicitly opts in.
+    private let touchBarRequested = ProcessInfo.processInfo.arguments.contains("--touchbar")
     private var pinItem: NSMenuItem?
     private var awakeItem: NSMenuItem?
     private var frameTimer: Timer?
@@ -536,13 +536,13 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     private var displayAssertion: IOPMAssertionID = 0
 
     /// false after the user chose "Hide cat" -> nothing may bring the bar back.
-    private var wantVisible = true
+    private var wantVisible = false
     /// nil = not yet known; true = NSTouchBar.isVisible works for system-modal bars.
     private var visibilityReliable: Bool?
 
     /// Pinned: no close button, and the bar is restored automatically if the system drops it.
     private var pinned: Bool {
-        get { (defaults.object(forKey: "pinned") as? Bool) ?? true }
+        get { (defaults.object(forKey: "pinned") as? Bool) ?? false }
         set { defaults.set(newValue, forKey: "pinned") }
     }
     private var keepAwake: Bool {
@@ -561,8 +561,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         ProcessInfo.processInfo.disableSuddenTermination()
 
         buildMenu()
-        buildBar()
-        observeSystemEvents()
+        if touchBarRequested { showTouchBar() }
 
         // .common so the pet keeps animating while the menu-bar menu is open.
         let t = Timer(timeInterval: 1.0 / 20.0, repeats: true) { _ in PetState.shared.update() }
@@ -577,9 +576,8 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         RunLoop.main.add(w, forMode: .common)
         watchdog = w
 
-        if keepAwake { setKeepAwake(true) }
-        show()
-        if previewMode { showPreview() }
+        // On-screen preview is the default, without taking over the hardware bar.
+        if !touchBarRequested { showPreview() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -595,10 +593,11 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.title = "PET"
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Show cat", action: #selector(show), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Show preview", action: #selector(showPreview), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Show on Touch Bar (opt in)", action: #selector(showTouchBar), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Pet Kitty", action: #selector(petKitty), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Restore normal Touch Bar", action: #selector(restoreNormalTouchBar), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Hide cat", action: #selector(hide), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Open on-screen preview", action: #selector(showPreview), keyEquivalent: ""))
         menu.addItem(.separator())
         let pin = NSMenuItem(title: "Pin to Touch Bar (no close button, auto-restore)",
                              action: #selector(togglePin(_:)), keyEquivalent: "")
@@ -622,7 +621,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         b.principalItemIdentifier = PetApp.canvasID
         bar = b
 
-        // Control Strip button: one tap brings the pet back if it was dismissed.
+        // Control Strip button exists only during explicit hardware opt-in.
         let tray = NSCustomTouchBarItem(identifier: PetApp.trayID)
         tray.view = NSButton(title: "PET", target: self, action: #selector(show))
         TouchPETInstallTrayItem(tray, PetApp.trayID.rawValue)
@@ -694,14 +693,27 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
     @objc func petKitty() { PetState.shared.pet() }
 
-    @objc func show() {
+    @objc func showTouchBar() {
+        if bar == nil { buildBar(); observeSystemEvents() }
         wantVisible = true
+        if keepAwake { setKeepAwake(true, save: false) }
         present()
     }
-    @objc func hide() {
+
+    @objc func restoreNormalTouchBar() {
         wantVisible = false
-        previewWindow?.orderOut(nil)
         if let b = bar { TouchPETDismissBar(b) }
+        TouchPETRemoveTrayItem(PetApp.trayID.rawValue)
+        trayItem = nil
+        bar = nil
+        setKeepAwake(false, save: false)
+        statusItem?.button?.title = "PET"
+    }
+
+    @objc func show() { showTouchBar() }
+    @objc func hide() {
+        restoreNormalTouchBar()
+        previewWindow?.orderOut(nil)
     }
 
     /// Uses the exact same PetCanvas and PetState as the hardware Touch Bar.
@@ -731,11 +743,11 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     @objc func togglePin(_ sender: NSMenuItem) {
         pinned.toggle()
         sender.state = pinned ? .on : .off
-        if wantVisible { present() }   // re-present to apply the close-button setting
+        if wantVisible { present() }   // re-present only while opted in
     }
 
     @objc func toggleAwake(_ sender: NSMenuItem) {
-        setKeepAwake(!keepAwake)
+        setKeepAwake(!keepAwake && wantVisible)
         sender.state = keepAwake ? .on : .off
     }
 
