@@ -13,6 +13,10 @@ final class PetState {
     // World (positions are fractions of the canvas width, 0...1)
     var x: CGFloat = 0.36
     var ball: CGFloat = 0.78
+    var ballVelocity: CGFloat = 0     // fraction of canvas width per second
+    var ballSpin: CGFloat = 0
+    var ballDragging = false
+    var chasingBall = false
     var snack: CGFloat?
     var poop: [CGFloat] = []
     var sleeping = false
@@ -36,16 +40,9 @@ final class PetState {
     var nextWander = Date().addingTimeInterval(3)
     var walkTarget: CGFloat?
 
-    // Hopping (when the cat is petted)
-    static let hopDuration: CGFloat = 0.42
-    static let maxQueuedHops = 6
-    private(set) var isHopping = false
-    var hopsLeft = 0
-    private var hopT: CGFloat = 0
-    private var hopFrom: CGFloat = 0
-    private var hopTo: CGFloat = 0
-    var jump: CGFloat = 0      // 0...1, height of the current hop arc
-    var landing: CGFloat = 0   // 1 -> 0, landing squash
+    // Kept at rest: Blob Kitty does not hop when petted.
+    let jump: CGFloat = 0
+    let landing: CGFloat = 0
     var hearts: [Heart] = []
 
     // Blob Kitty needs: 0...10. Updated with elapsed real time.
@@ -68,24 +65,6 @@ final class PetState {
         if hearts.count > 5 { hearts.removeFirst() }
     }
 
-    /// Adds hops to the queue; rapid taps extend the sequence instead of restarting it.
-    private func queueHops(_ n: Int) {
-        hopsLeft = min(hopsLeft + n, PetState.maxQueuedHops)
-        if !isHopping { beginHop() }
-    }
-
-    private func beginHop() {
-        guard hopsLeft > 0 else { return }
-        hopsLeft -= 1
-        hopT = 0
-        hopFrom = x
-        var dist = CGFloat.random(in: 0.025...0.055) * (Bool.random() ? 1 : -1)
-        if x + dist < 0.1 || x + dist > 0.9 { dist = -dist }   // bounce off the edges
-        hopTo = max(0.1, min(0.9, x + dist))
-        if abs(hopTo - x) > 0.003 { direction = hopTo > x ? 1 : -1 }
-        isHopping = true
-    }
-
     func addSnack(_ p: CGFloat) { snack = p; sleeping = false; recentActivity = Date() }
 
     func clean(_ index: Int) {
@@ -95,11 +74,28 @@ final class PetState {
         recentActivity = Date()
     }
 
-    func ballMoved(_ p: CGFloat, newGame: Bool) {
-        ball = max(0.03, min(0.97, p))
-        if newGame { games += 1; defaults.set(games, forKey: "games") }
-        sleeping = false; recentActivity = Date()
-        if !isHopping && snack == nil { direction = ball >= x ? 1 : -1 }
+    func startBallDrag(at p: CGFloat) {
+        ballDragging = true
+        ballVelocity = 0
+        chasingBall = false
+        moveBall(to: p)
+        games += 1
+        defaults.set(games, forKey: "games")
+    }
+
+    func moveBall(to p: CGFloat) {
+        ball = max(0.02, min(0.98, p))
+        sleeping = false
+        recentActivity = Date()
+    }
+
+    func finishBallDrag(velocity: CGFloat) {
+        guard ballDragging else { return }
+        ballDragging = false
+        ballVelocity = max(-1.2, min(1.2, velocity))
+        chasingBall = true
+        sleeping = false
+        recentActivity = Date()
     }
 
     /// Advances the simulation. Uses real elapsed time so speed is frame-rate independent.
@@ -120,19 +116,19 @@ final class PetState {
 
         for i in hearts.indices { hearts[i].age += dt * 1.1 }
         hearts.removeAll { $0.age >= 1 }
-        landing = max(0, landing - dt * 5)
-
-        if isHopping {
-            hopT += dt / PetState.hopDuration
-            let p = min(hopT, 1)
-            x = hopFrom + (hopTo - hopFrom) * p
-            jump = sin(p * .pi)
-            if hopT >= 1 {
-                x = hopTo; jump = 0; landing = 1
-                isHopping = false
-                if hopsLeft > 0 { beginHop() }
+        // Release momentum, friction and rebounds match the browser Blob Kitty.
+        if !ballDragging {
+            ball += ballVelocity * dt
+            ballSpin += ballVelocity * dt * 8
+            ballVelocity *= exp(-1.45 * dt)
+            if ball < 0.02 || ball > 0.98 {
+                ball = max(0.02, min(0.98, ball))
+                ballVelocity *= -0.55
             }
-        } else if let food = snack {
+            if abs(ballVelocity) < 0.003 { ballVelocity = 0 }
+        }
+
+        if let food = snack {
             direction = food > x ? 1 : -1
             x += max(-0.12 * dt, min(0.12 * dt, food - x))
             if abs(food - x) < 0.022 {
@@ -140,6 +136,16 @@ final class PetState {
                 hunger = min(10, hunger + 4)
                 defaults.set(feeds, forKey: "feeds")
                 recentActivity = now
+            }
+        } else if chasingBall {
+            direction = ball >= x ? 1 : -1
+            let delta = ball - x
+            x += max(-0.16 * dt, min(0.16 * dt, delta))
+            if abs(delta) < 0.02 && !ballDragging {
+                if abs(ballVelocity) < 0.03 {
+                    ballVelocity += direction * 0.2
+                    chasingBall = false
+                }
             }
         } else if now.timeIntervalSince(recentActivity) > 25 {
             sleeping = true; walkTarget = nil
@@ -171,6 +177,9 @@ final class PetCanvas: NSView {
 
     let state = PetState.shared
     private var draggingBall = false
+    private var lastBallPosition: CGFloat = 0
+    private var lastBallTime: TimeInterval = 0
+    private var releaseVelocity: CGFloat = 0
     private var touchIdentity: (NSCopying & NSObjectProtocol)?
     private var lastTouchTime: TimeInterval = 0
 
@@ -315,7 +324,12 @@ final class PetCanvas: NSView {
         if let food = state.snack {
             for dx in [-4.0, 0.0, 4.0] { oval(food * w + CGFloat(dx), groundY, 3.5, 3.5, .orange) }
         }
-        oval(state.ball * w - 5, groundY, 10, 10, .systemPink)
+        // Rolling pink ball with a rotating highlight.
+        oval(state.ball * w - 6, groundY - 1, 12, 12, .systemPink)
+        let glintX = cos(state.ballSpin) * 2.5
+        let glintY = sin(state.ballSpin) * 2.5
+        oval(state.ball * w - 2 + glintX, groundY + 5 + glintY, 3, 3,
+             NSColor(red: 1, green: 0.86, blue: 0.92, alpha: 1))
 
         // Cat
         let cx = state.x * w
@@ -386,7 +400,12 @@ final class PetCanvas: NSView {
         draggingBall = false
         switch best?.hit {
         case .poop(let i)?: state.clean(i)
-        case .ball?: draggingBall = true; state.ballMoved(f, newGame: true)
+        case .ball?:
+            draggingBall = true
+            lastBallPosition = f
+            lastBallTime = ProcessInfo.processInfo.systemUptime
+            releaseVelocity = 0
+            state.startBallDrag(at: f)
         case .cat?: state.pet()
         case nil: state.addSnack(f)
         }
@@ -394,10 +413,25 @@ final class PetCanvas: NSView {
     }
 
     private func handleMove(_ fraction: CGFloat) {
-        if draggingBall { state.ballMoved(fraction, newGame: false); needsDisplay = true }
+        guard draggingBall else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        let elapsed = max(0.016, now - lastBallTime)
+        releaseVelocity = max(-1.2, min(1.2,
+            (fraction - lastBallPosition) / CGFloat(elapsed)))
+        lastBallPosition = fraction
+        lastBallTime = now
+        state.moveBall(to: fraction)
+        needsDisplay = true
     }
 
-    private func endTouch() { draggingBall = false; touchIdentity = nil }
+    private func endDrag() {
+        if draggingBall {
+            let elapsed = ProcessInfo.processInfo.systemUptime - lastBallTime
+            state.finishBallDrag(velocity: elapsed < 0.15 ? releaseVelocity : 0)
+        }
+        draggingBall = false
+    }
+    private func endTouch() { endDrag(); touchIdentity = nil }
 
     // Touch Bar touches. AppKit may *also* synthesize mouse events for the same tap, so
     // mouse handlers below ignore events that closely follow a touch (no double counting).
@@ -433,7 +467,7 @@ final class PetCanvas: NSView {
         handleMove(convert(event.locationInWindow, from: nil).x / max(1, bounds.width))
     }
     override func mouseUp(with event: NSEvent) {
-        if !mouseIsEchoOfTouch { draggingBall = false }
+        if !mouseIsEchoOfTouch { endDrag() }
     }
 }
 
@@ -448,6 +482,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     private var trayItem: NSCustomTouchBarItem?
     private var statusItem: NSStatusItem?
     private var previewWindow: NSPanel?
+    // --preview opens an additional window while keeping the hardware Touch Bar active.
     private let previewMode = ProcessInfo.processInfo.arguments.contains("--preview")
     private var pinItem: NSMenuItem?
     private var awakeItem: NSMenuItem?
@@ -482,7 +517,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         ProcessInfo.processInfo.disableSuddenTermination()
 
         buildMenu()
-        if !previewMode { buildBar() }
+        buildBar()
         observeSystemEvents()
 
         // .common so the pet keeps animating while the menu-bar menu is open.
@@ -499,12 +534,13 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         watchdog = w
 
         if keepAwake { setKeepAwake(true) }
-        if previewMode { showPreview() } else { show() }
+        show()
+        if previewMode { showPreview() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         if let b = bar { TouchPETDismissBar(b) }
-        if !previewMode { TouchPETRemoveTrayItem(PetApp.trayID.rawValue) }
+        TouchPETRemoveTrayItem(PetApp.trayID.rawValue)
         setKeepAwake(false, save: false)
         if let a = activity { ProcessInfo.processInfo.endActivity(a) }
     }
@@ -613,7 +649,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
     @objc func show() {
         wantVisible = true
-        if previewMode { showPreview() } else { present() }
+        present()
     }
     @objc func hide() {
         wantVisible = false
