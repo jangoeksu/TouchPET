@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Test pet needs persistence
-        run: swift Sources/PetNeeds.swift Tests/PetNeedsTests.swift
+        run: |\n          mkdir -p /tmp/touchbarpet-tests\n          cp Tests/PetNeedsTests.swift /tmp/touchbarpet-tests/main.swift\n          swiftc Sources/PetNeeds.swift /tmp/touchbarpet-tests/main.swift -o /tmp/touchbarpet-tests/run-tests\n          /tmp/touchbarpet-tests/run-tests
       - name: Check shell scripts
         run: bash -n build.sh install.sh uninstall.sh
       - name: Build TouchBarPET
