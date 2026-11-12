@@ -11,6 +11,10 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
+      - name: Test pet needs persistence
+        run: swift Sources/PetNeeds.swift Tests/PetNeedsTests.swift
+      - name: Check shell scripts
+        run: bash -n build.sh install.sh uninstall.sh
       - name: Build TouchBarPET
         run: bash ./build.sh
       - name: Package TouchBarPET.app
