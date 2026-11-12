@@ -20,6 +20,7 @@ final class PetState {
     var snack: CGFloat?
     var poop: [CGFloat] = []
     var sleeping = false
+    var sleepUntil = Date.distantPast
     var direction: CGFloat = 1
     var tick: CGFloat = 0
 
@@ -129,6 +130,11 @@ final class PetState {
             if abs(ballVelocity) < 0.003 { ballVelocity = 0 }
         }
 
+        if sleeping && now >= sleepUntil {
+            sleeping = false
+            recentActivity = now
+            nextWander = now.addingTimeInterval(2)
+        }
         if lounging && now >= loungeUntil {
             lounging = false
             nextLounge = now.addingTimeInterval(Double.random(in: 14...24))
@@ -158,8 +164,10 @@ final class PetState {
             lounging = true
             loungeUntil = now.addingTimeInterval(Double.random(in: 3...6))
             walkTarget = nil
-        } else if now.timeIntervalSince(recentActivity) > 40 {
-            sleeping = true; walkTarget = nil
+        } else if !sleeping && now.timeIntervalSince(recentActivity) > 40 {
+            sleeping = true
+            sleepUntil = now.addingTimeInterval(30)
+            walkTarget = nil
         } else if !sleeping {
             if let target = walkTarget {
                 direction = target > x ? 1 : -1
@@ -495,9 +503,19 @@ final class PetCanvas: NSView {
     }
     override func touchesEnded(with event: NSEvent) {
         lastTouchTime = ProcessInfo.processInfo.systemUptime
-        endTouch()
+        guard let id = touchIdentity else { return }
+        if event.touches(matching: .ended, in: self).contains(where: { $0.identity.isEqual(id) }) {
+            endTouch()
+        }
     }
-    override func touchesCancelled(with event: NSEvent) { endTouch() }
+    override func touchesCancelled(with event: NSEvent) {
+        guard let id = touchIdentity else { return }
+        if event.touches(matching: .cancelled, in: self).contains(where: { $0.identity.isEqual(id) }) {
+            draggingBall = false
+            state.finishBallDrag(velocity: 0)
+            touchIdentity = nil
+        }
+    }
 
     private var mouseIsEchoOfTouch: Bool {
         ProcessInfo.processInfo.systemUptime - lastTouchTime < 0.35
