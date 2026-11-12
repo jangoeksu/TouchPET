@@ -50,6 +50,20 @@ final class PetState {
     // Blob Kitty needs: 0...10. Updated with elapsed real time.
     var hunger: CGFloat = 10
     var company: CGFloat = 10
+    private var lastNeedsSave = Date.distantPast
+
+    private init() {
+        let snapshot = PetNeeds.restore(from: defaults, now: Date())
+        hunger = CGFloat(snapshot.hunger)
+        company = CGFloat(snapshot.company)
+    }
+
+    func saveNeeds(force: Bool = false) {
+        let now = Date()
+        guard force || now.timeIntervalSince(lastNeedsSave) >= 5 else { return }
+        PetNeeds(hunger: Double(hunger), company: Double(company)).save(to: defaults, now: now)
+        lastNeedsSave = now
+    }
 
     var views = NSHashTable<NSView>.weakObjects()
 
@@ -61,6 +75,7 @@ final class PetState {
         sleeping = false; lounging = false; recentActivity = now
         walkTarget = nil
         company = min(10, company + 2)
+        saveNeeds(force: true)
         pettingUntil = now.addingTimeInterval(1.3)
         // Blob Kitty stays on the ground when petted (no hopping).
         hearts.append(Heart(x: CGFloat.random(in: -8...8), age: 0))
@@ -109,6 +124,7 @@ final class PetState {
         hunger = max(0, hunger - min(elapsed, 60) / 18)
         company = max(0, company - min(elapsed, 60) / 22)
         lastUpdate = now
+        saveNeeds()
         tick += dt * 1.6
 
         if now.timeIntervalSince(lastPoop) > 1100 {
@@ -145,6 +161,7 @@ final class PetState {
             if abs(food - x) < 0.022 {
                 snack = nil; feeds += 1
                 hunger = min(10, hunger + 4)
+                saveNeeds(force: true)
                 defaults.set(feeds, forKey: "feeds")
                 recentActivity = now
             }
@@ -558,6 +575,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     /// nil = not yet known; true = NSTouchBar.isVisible works for system-modal bars.
     private var visibilityReliable: Bool?
     private var restoreGeneration = 0
+    private var presentationGeneration = 0
 
     /// Pinned: no close button, and the bar is restored automatically if the system drops it.
     private var pinned: Bool {
@@ -583,7 +601,17 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         if touchBarRequested { showTouchBar() }
 
         // .common so the pet keeps animating while the menu-bar menu is open.
-        let t = Timer(timeInterval: 1.0 / 20.0, repeats: true) { _ in PetState.shared.update() }
+        let t = Timer(timeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            if self.wantVisible || self.previewWindow?.isVisible == true {
+                PetState.shared.update()
+            } else {
+                // Advance needs at low frequency without drawing hidden canvases.
+                if Int(ProcessInfo.processInfo.systemUptime) % 5 == 0 {
+                    PetState.shared.update()
+                }
+            }
+        }
         t.tolerance = 0.01
         RunLoop.main.add(t, forMode: .common)
         frameTimer = t
@@ -600,6 +628,9 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        PetState.shared.saveNeeds(force: true)
+        frameTimer?.invalidate()
+        watchdog?.invalidate()
         if let b = bar { TouchPETDismissBar(b) }
         TouchPETRemoveTrayItem(PetApp.trayID.rawValue)
         setKeepAwake(false, save: false)
@@ -703,11 +734,25 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
         TouchPETSetCloseBoxVisible(!pinned)
         let ok = TouchPETPresentBar(b, PetApp.trayID.rawValue)
         statusItem?.button?.title = ok ? "PET" : "PET!"
-        if !ok { NSLog("TouchBarPET: no system-modal Touch Bar API available on this macOS version") }
+        if !ok {
+            NSLog("TouchBarPET: no system-modal Touch Bar API available on this macOS version")
+            statusItem?.button?.title = "PET!"
+            showPreview()
+        }
+        presentationGeneration += 1
+        let generation = presentationGeneration
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            guard let self = self, self.wantVisible, let b = self.bar else { return }
-            if b.isVisible { self.visibilityReliable = true }
-            else if self.visibilityReliable == nil { self.visibilityReliable = false }
+            guard let self = self, self.wantVisible,
+                  self.presentationGeneration == generation, let b = self.bar else { return }
+            if b.isVisible {
+                self.visibilityReliable = true
+                self.statusItem?.button?.title = "PET"
+            } else {
+                if self.visibilityReliable == nil { self.visibilityReliable = false }
+                NSLog("TouchBarPET: hardware visibility could not be confirmed")
+                self.statusItem?.button?.title = "PET!"
+                self.showPreview()
+            }
         }
     }
 
@@ -725,6 +770,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
 
     @objc func restoreNormalTouchBar() {
         restoreGeneration += 1
+        presentationGeneration += 1
         wantVisible = false
         if let b = bar { TouchPETDismissBar(b) }
         TouchPETRemoveTrayItem(PetApp.trayID.rawValue)
