@@ -52,7 +52,7 @@ mkdir -p "$STAGED_APP/Contents/MacOS"
 "$SWIFT_COMPILER" -sdk "$SDK_PATH" -O -swift-version 5 \
   -import-objc-header Sources/TouchBarBridge.h \
   -framework AppKit -framework IOKit \
-  Sources/main.swift "$OBJ" -o "$STAGED_APP/Contents/MacOS/TouchBarPET"
+  Sources/PetNeeds.swift Sources/main.swift "$OBJ" -o "$STAGED_APP/Contents/MacOS/TouchBarPET"
 cp Info.plist "$STAGED_APP/Contents/Info.plist"
 codesign --force --sign - "$STAGED_APP" >/dev/null 2>&1 || echo "warning: ad-hoc codesign failed (app may still run)"
 # Only replace a previously working app after successful compilation.
