@@ -539,6 +539,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     private var wantVisible = false
     /// nil = not yet known; true = NSTouchBar.isVisible works for system-modal bars.
     private var visibilityReliable: Bool?
+    private var restoreGeneration = 0
 
     /// Pinned: no close button, and the bar is restored automatically if the system drops it.
     private var pinned: Bool {
@@ -657,9 +658,12 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     // MARK: Presenting
 
     private func restore(after delays: [TimeInterval], onlyIfKnown: Bool) {
+        guard pinned, wantVisible else { return }
+        let generation = restoreGeneration
         for d in delays {
             DispatchQueue.main.asyncAfter(deadline: .now() + d) { [weak self] in
-                self?.ensureVisible(onlyIfKnown: onlyIfKnown)
+                guard let self = self, self.restoreGeneration == generation else { return }
+                self.ensureVisible(onlyIfKnown: onlyIfKnown)
             }
         }
     }
@@ -668,22 +672,22 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     /// version we only re-present for events that definitely dismiss it (wake/unlock),
     /// never on a timer, so the pet doesn't flicker.
     private func ensureVisible(onlyIfKnown: Bool) {
-        guard wantVisible, let b = bar else { return }
+        guard pinned, wantVisible, let b = bar else { return }
         if visibilityReliable == true {
-            if !b.isVisible && (pinned || !onlyIfKnown) { present() }
+            if !b.isVisible { present() }
         } else if !onlyIfKnown {
             present()
         }
     }
 
     private func present() {
-        guard let b = bar else { return }
+        guard wantVisible, let b = bar else { return }
         TouchPETSetCloseBoxVisible(!pinned)
         let ok = TouchPETPresentBar(b, PetApp.trayID.rawValue)
         statusItem?.button?.title = ok ? "PET" : "PET!"
         if !ok { NSLog("TouchBarPET: no system-modal Touch Bar API available on this macOS version") }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            guard let self = self, let b = self.bar else { return }
+            guard let self = self, self.wantVisible, let b = self.bar else { return }
             if b.isVisible { self.visibilityReliable = true }
             else if self.visibilityReliable == nil { self.visibilityReliable = false }
         }
@@ -694,6 +698,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     @objc func petKitty() { PetState.shared.pet() }
 
     @objc func showTouchBar() {
+        restoreGeneration += 1
         if bar == nil { buildBar(); observeSystemEvents() }
         wantVisible = true
         if keepAwake { setKeepAwake(true, save: false) }
@@ -701,6 +706,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     }
 
     @objc func restoreNormalTouchBar() {
+        restoreGeneration += 1
         wantVisible = false
         if let b = bar { TouchPETDismissBar(b) }
         TouchPETRemoveTrayItem(PetApp.trayID.rawValue)
@@ -743,6 +749,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     @objc func togglePin(_ sender: NSMenuItem) {
         pinned.toggle()
         sender.state = pinned ? .on : .off
+        restoreGeneration += 1
         if wantVisible { present() }   // re-present only while opted in
     }
 
