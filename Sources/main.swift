@@ -566,6 +566,7 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
     private var pinItem: NSMenuItem?
     private var awakeItem: NSMenuItem?
     private var frameTimer: Timer?
+    private var lastHiddenUpdate = Date.distantPast
     private var watchdog: Timer?
     private var activity: NSObjectProtocol?
     private var displayAssertion: IOPMAssertionID = 0
@@ -607,8 +608,9 @@ final class PetApp: NSObject, NSApplicationDelegate, NSTouchBarDelegate {
                 PetState.shared.update()
             } else {
                 // Advance needs at low frequency without drawing hidden canvases.
-                if Int(ProcessInfo.processInfo.systemUptime) % 5 == 0 {
+                if Date().timeIntervalSince(self.lastHiddenUpdate) >= 5 {
                     PetState.shared.update()
+                    self.lastHiddenUpdate = Date()
                 }
             }
         }
